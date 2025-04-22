@@ -70,83 +70,121 @@ def objective(x):
 
     gauss_xi, gauss_w = np.polynomial.legendre.leggauss(20)
 
-    H0 = hermite_quintic(0, gauss_xi)
     H1 = hermite_quintic(1, gauss_xi)
     H2 = hermite_quintic(2, gauss_xi)
     H3 = hermite_quintic(3, gauss_xi)
 
-    #for i in range(0,len(x),12):
-    i = 0
-    cx = x[i:i+6]
-    cy = x[i+6:i+12]
+    f = 0.0
+    for i in range(0,len(x)-6,6):
 
-    cx_t   = H1@cx
-    cy_t   = H1@cy
-    cx_tt  = H2@cx
-    cy_tt  = H2@cy
-    cx_ttt = H3@cx
-    cy_ttt = H3@cy
+        cx = np.zeros(6)
+        cx[0:3] = x[i+0:i+3]
+        cx[3:6] = x[i+6:i+9]
 
-    k  = curvature(cx_t, cy_t, cx_tt, cy_tt)
-    kt = curvature_derivative(cx_t, cy_t, cx_tt, cy_tt, cx_ttt, cy_ttt)
+#        print("cx")
+#        print(cx)
 
 
-    f = np.sum(kt*kt*gauss_w)
+        cy = np.zeros(6)
+        cy[0:3] = x[i+3:i+6]
+        cy[3:6] = x[i+9:i+12]
+   #     print("cy")
+   #     print(cy)
 
-    print(f)
+        cx_t   = H1@cx
+        cy_t   = H1@cy
+        cx_tt  = H2@cx
+        cy_tt  = H2@cy
+        cx_ttt = H3@cx
+        cy_ttt = H3@cy
+
+        k  = curvature(cx_t, cy_t, cx_tt, cy_tt)
+        kt = curvature_derivative(cx_t, cy_t, cx_tt, cy_tt, cx_ttt, cy_ttt)
+
+ #       print("kt")
+ #       print(kt)
+        f = f + np.sum(kt*kt*gauss_w)
+
 
     return f
 
-
-eq1 = {'type': 'eq', 'fun': lambda x: x[0]  - (0.0)} # x(0)   =  -1
-eq2 = {'type': 'eq', 'fun': lambda x: x[1]  - 0.0} # x_t(0) =  0
-eq3 = {'type': 'eq', 'fun': lambda x: x[3]  - 1.0} # x(1)   =  1
-eq4 = {'type': 'eq', 'fun': lambda x: x[4]  - 0.0} # x_t(1) =  0
-eq5 = {'type': 'eq', 'fun': lambda x: x[6]  - 0.0} # y(0)   =  0
-eq6 = {'type': 'eq', 'fun': lambda x: x[7]  - 1.0} # y_t(0) =  1
-eq7 = {'type': 'eq', 'fun': lambda x: x[9]  - 1.0} # y(1)   =  0
-eq8 = {'type': 'eq', 'fun': lambda x: x[10] - (1.0)} # y_t(1) = -1
+# node dof arragement
+# 0 - x
+# 1 - x'
+# 2 - x''
+# 3 - y
+# 4 - y'
+# 5 - y''
 
 
-ndof = 12
 
+node_dof = 6
+nnodes   = 3
+
+ndof = node_dof * nnodes
+
+# Boundary conditions
+bc_dof    = [   0,   1,   3,   4,   0,   1,   3,    4]
+bc_value  = [-1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, -1.0]
+
+bc_offset_end = int(ndof - node_dof)
+bc_offset     = [0,0,0,0,bc_offset_end,bc_offset_end,bc_offset_end,bc_offset_end] 
+
+# Define the equality constraints:
+equality_constraints = []
+for i in range(len(bc_dof)):
+    eq = {'type': 'eq', 'fun': lambda x,i=i: x[bc_dof[i] + bc_offset[i]] - bc_value[i]}
+    equality_constraints.append(eq)
+
+#exit()
+
+# Initial guess
 x0 = np.zeros(ndof)
+for i in range(len(bc_dof)):
+    x0[bc_dof[i] + bc_offset[i]] = bc_value[i]
 
-x0[0]  = -1.0 # x(0)   = -1
-x0[1]  = 0.0 # x_t(0) = 0
-x0[3]  = 1.0 # x(1)   = 1
-x0[4]  = 0.0 # x_t(1) = 0
-x0[6]  = 0.0 # y(0)   = 0
-x0[7]  = 1.0 # y_t(0) = 1
-x0[9]  = 0.0 # y(1)   = 0
-x0[10] = 1.0 # y_t(1) = -1
+
+
+x0[7] = 1
+x0[9] = 0.6
+
 
 
 tol     = 1e-16
-options = {"maxiter" : 100,'disp': True}
-res     = minimize(objective, x0,constraints=[eq1, eq2, eq3, eq4, eq5, eq6, eq7, eq8], tol=tol, method='SLSQP',options=options)
-
-cx = res.x[0:6]
-cy = res.x[6:12]
+options = {"maxiter" : 1000,'disp': True}
+res     = minimize(objective, x0,constraints=equality_constraints , tol=tol, method='SLSQP',options=options)
 
 xi = np.arange(-1, 1.01, 0.01)
 H0 = hermite_quintic(0,xi)
 
-x  = H0@cx
-y  = H0@cy
+x = res.x
+#x = x0
+for i in range(0,len(x)-6,6):
 
+    cx = np.zeros(6)
+    cx[0:3] = x[i+0:i+3]
+    cx[3:6] = x[i+6:i+9]
 
-plt.figure()
-plt.plot(xi, x, 'r-')
-plt.title('x')
+    cy = np.zeros(6)
+    cy[0:3] = x[i+3:i+6]
+    cy[3:6] = x[i+9:i+12]
 
-plt.figure()
-plt.plot(xi, y, 'r-')
-plt.title('y')
+    xx  = H0@cx
+    yy  = H0@cy
 
-plt.figure()
-plt.plot(x, y, 'r-')
-plt.title('x-y')
+    plt.figure(1)
+    plt.plot(xi, xx)
+    plt.title('x')
+    plt.grid(True)
 
-plt.grid(True)
+    plt.figure(2)
+    plt.plot(xi, yy)
+    plt.title('y')
+    plt.grid(True)
+
+    plt.figure(3)
+    plt.plot(xx, yy)
+    plt.title('x-y')
+    plt.grid(True)
+
 plt.show()
