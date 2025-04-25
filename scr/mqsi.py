@@ -1,6 +1,7 @@
 from scipy.optimize import minimize
 import numpy as np
 import matplotlib.pyplot as plt
+from dataclasses import dataclass
 
 from mvc_integrand_jacobian import mvc_integrand_jacobian
 from mvc_objective_function import mvc_objective_function
@@ -15,14 +16,33 @@ from curvature              import curvature
 # 4 - y'
 # 5 - y''
 
-node_dof = 6
-maxiter  = 10000
-tol     = 1e-4
 
+@dataclass(frozen=True)
+class Constants:
+    NODE_DOFS: int = 6
+
+def assign_constraints(x0, bc_dof, bc_value):
+    for i in range(len(bc_dof)):
+        for j in range(len(bc_dof[i])):
+            k = i*Constants.NODE_DOFS + bc_dof[i][j]
+            x0[k] = bc_value[i][j]
+    return x0
+
+def assign_constraints_grad(x0, bc_dof):
+    for i in range(len(bc_dof)):
+        for j in range(len(bc_dof[i])):
+            k = i*Constants.NODE_DOFS + bc_dof[i][j]
+            x0[k] = 0.0
+    return x0
+
+
+maxiter  = 10000
+tol     = 1e-7
+solver_type = "gradient_descent" # "trust-constr" # "SLSQP" # "L-BFGS-B" # "dogleg" # "trust-ncg"
 
 curve = "wicket2"
 if curve == "wicket2":
-    r = 1.0
+    r = 1.9866
     l = np.pi*r
     k = 1/r
     print("curve     = ",curve)
@@ -51,18 +71,15 @@ elif curve == "points3":
 equality_constraints = []
 for i in range(len(bc_dof)):
     for j in range(len(bc_dof[i])):
-        k = i*node_dof + bc_dof[i][j]
+        k = i*Constants.NODE_DOFS + bc_dof[i][j]
         eq = {'type': 'eq', 'fun': lambda x,i=i,j=j,k=k: x[k] - bc_value[i][j]}
         equality_constraints.append(eq)
 
 #-----------------------------------------------------------------------------#
 # Initial condition
 #-----------------------------------------------------------------------------#
-x0 = np.zeros(node_dof * len(bc_dof))
-for i in range(len(bc_dof)):
-    for j in range(len(bc_dof[i])):
-        k = i*node_dof + bc_dof[i][j]
-        x0[k] = bc_value[i][j]
+x0 = np.zeros(Constants.NODE_DOFS * len(bc_dof))
+x0 = assign_constraints(x0, bc_dof, bc_value)
 
 if curve=="wicket2":
     
@@ -86,16 +103,77 @@ elif curve=="points3":
 #-----------------------------------------------------------------------------#
 # Solve:
 #-----------------------------------------------------------------------------#
-options = {"maxiter" : maxiter,'disp': True, "verbose" : 1}
-method =  'trust-constr' # 'SLSQP' #
-res     = minimize(mvc_objective_function, x0, jac=mvc_integrand_jacobian,constraints=equality_constraints , tol=tol, method=method,options=options)
+if solver_type == "trust-constr":
+    print("Solving with trust-constr ...")
+    options = {"maxiter" : maxiter,'disp': True, "verbose" : 1}
+    method =  'trust-constr' # 'SLSQP' #
+    res     = minimize(mvc_objective_function, x0, jac=mvc_integrand_jacobian,constraints=equality_constraints , tol=tol, method=method,options=options)
+    x = res.x
+elif solver_type == "gradient_descent":
 
+    print("Solving with gradient descent ...")
+
+    #----------------------------------------------------#
+    # Initialization of variables:
+    #----------------------------------------------------#
+    x     = x0
+    x_old = 0*x0
+    grad  = np.zeros(len(x))
+
+    #----------------------------------------------------#
+    # Initialization of norms:
+    #----------------------------------------------------#
+    x_norm_init = np.linalg.norm(x)
+    x_norm_old  = x_norm_init
+    
+    #----------------------------------------------------#
+    # Main loop:
+    #----------------------------------------------------#
+    for i in range(maxiter):
+
+        #----------------------------------------------------#
+        # Compute the gradient:
+        #----------------------------------------------------#
+        grad_old = grad
+        grad     = mvc_integrand_jacobian(x)
+        grad     = assign_constraints_grad(grad, bc_dof)
+
+        #----------------------------------------------------#
+        # Compute iteration step size:
+        #----------------------------------------------------#
+        dx    = x - x_old
+        dgrad = grad - grad_old
+        gamma = 1e-10
+        if dgrad.dot(dgrad)>0:
+            gamma = np.abs(dx.dot(dgrad))/dgrad.dot(dgrad)
+
+        #----------------------------------------------------#
+        # Update the solution:
+        #----------------------------------------------------#
+        x_old = x
+        x     = x - gamma*grad
+        
+        #----------------------------------------------------#
+        # Check convergence:
+        #----------------------------------------------------#
+        x_norm     = np.linalg.norm(x)
+        dx_norm    = np.abs(x_norm - x_norm_old)/x_norm_init
+        x_norm_old = x_norm
+        print(f"Iteration {i:<3}  gamma: {gamma:<10.4e}  dx_norm: {dx_norm:<10.4e}")
+        if dx_norm < tol:
+            print(f"Converged in {i} iterations.")
+            break
+
+
+#------------------------------------------------------------#
+# Plotting:
+#------------------------------------------------------------#
 xi = np.arange(-1, 1.01, 0.01)
 H0  = hermite_quintic(0,xi)
 Ht  = hermite_quintic(1,xi)
 Htt = hermite_quintic(2,xi)
 
-x = np.reshape(res.x,(len(bc_dof),6))
+x = np.reshape(x,(len(bc_dof),6))
 print("x")
 print(x)
 
