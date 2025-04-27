@@ -7,8 +7,6 @@ from mvc_integrand_jacobian import mvc_integrand_jacobian
 from mvc_objective_function import mvc_objective_function
 from hermite_quintic        import hermite_quintic
 from curvature              import curvature
-from mvc_mass_matrix        import mvc_mass_matrix
-
 
 # node dof arragement
 # 0 - x
