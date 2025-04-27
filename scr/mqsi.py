@@ -7,6 +7,8 @@ from mvc_integrand_jacobian import mvc_integrand_jacobian
 from mvc_objective_function import mvc_objective_function
 from hermite_quintic        import hermite_quintic
 from curvature              import curvature
+from mvc_mass_matrix        import mvc_mass_matrix
+
 
 # node dof arragement
 # 0 - x
@@ -36,14 +38,15 @@ def assign_constraints_grad(x0, bc_dof):
     return x0
 
 
-maxiter  = 1000
-tol     = 1e-7
+maxiter     = 1000
+tol         = 1e-5
 solver_type = "gradient_descent" # "trust-constr" # "SLSQP" # "L-BFGS-B" # "dogleg" # "trust-ncg"
+curve       = "wicket3"
+show_figures = False
 
-curve = "wicket3"
 if curve == "wicket2":
 
-    r = 1.9866
+    r = 1.0
     l = np.pi*r
     k = 1/r
 
@@ -58,7 +61,7 @@ if curve == "wicket2":
 
 elif curve == "wicket3":
 
-    r     = 2.0
+    r     = 10
     angle = np.pi/4
     k     = 1/r
 
@@ -124,15 +127,21 @@ elif curve=="points3":
     #x0[7]  = 1 # derivative at the middle point
     #x0[10] = 1 # derivative at the middle point
 
+
 #-----------------------------------------------------------------------------#
 # Solve:
 #-----------------------------------------------------------------------------#
 if solver_type == "trust-constr":
+
     print("Solving with trust-constr ...")
+    
     options = {"maxiter" : maxiter,'disp': True, "verbose" : 1}
     method =  'trust-constr' # 'SLSQP' #
+    
     res     = minimize(mvc_objective_function, x0, jac=mvc_integrand_jacobian,constraints=equality_constraints , tol=tol, method=method,options=options)
+
     x = res.x
+
 elif solver_type == "gradient_descent":
 
     print("Solving with gradient descent ...")
@@ -162,6 +171,9 @@ elif solver_type == "gradient_descent":
         grad     = mvc_integrand_jacobian(x)
         grad     = assign_constraints_grad(grad, bc_dof)
 
+#        print("grad")
+#        print(grad)
+
         #----------------------------------------------------#
         # Compute iteration step size:
         #----------------------------------------------------#
@@ -188,61 +200,62 @@ elif solver_type == "gradient_descent":
             print(f"Converged in {i} iterations.")
             break
 
+if show_figures:
 
-#------------------------------------------------------------#
-# Plotting:
-#------------------------------------------------------------#
-xi = np.arange(-1, 1.01, 0.01)
-H0  = hermite_quintic(0,xi)
-Ht  = hermite_quintic(1,xi)
-Htt = hermite_quintic(2,xi)
+    #------------------------------------------------------------#
+    # Plotting:
+    #------------------------------------------------------------#
+    xi = np.arange(-1, 1.01, 0.01)
+    H0  = hermite_quintic(0,xi)
+    Ht  = hermite_quintic(1,xi)
+    Htt = hermite_quintic(2,xi)
 
-x = np.reshape(x,(len(bc_dof),6))
-print("x")
-print(x)
+    x = np.reshape(x,(len(bc_dof),6))
+    #print("x")
+    #print(x)
 
-for i in range(x.shape[0]-1):
+    for i in range(x.shape[0]-1):
 
-    cx = np.zeros(6)
-    cx[0:3] = x[i][0:3]
-    cx[3:6] = x[i+1][0:3]
+        cx = np.zeros(6)
+        cx[0:3] = x[i][0:3]
+        cx[3:6] = x[i+1][0:3]
 
-    cy = np.zeros(6)
-    cy[0:3] = x[i][3:6]
-    cy[3:6] = x[i+1][3:6]
+        cy = np.zeros(6)
+        cy[0:3] = x[i][3:6]
+        cy[3:6] = x[i+1][3:6]
 
-    xx  = H0@cx
-    yy  = H0@cy
+        xx  = H0@cx
+        yy  = H0@cy
 
-    cx_t  = Ht@cx
-    cy_t  = Ht@cy
+        cx_t  = Ht@cx
+        cy_t  = Ht@cy
 
-    cx_tt  = Htt@cx
-    cy_tt  = Htt@cy
-
-
-    k  = curvature(cx_t, cy_t, cx_tt, cy_tt)
+        cx_tt  = Htt@cx
+        cy_tt  = Htt@cy
 
 
+        k  = curvature(cx_t, cy_t, cx_tt, cy_tt)
 
-    plt.figure(1)
-    plt.plot(xi, xx)
-    plt.title('x')
-    plt.grid(True)
 
-    plt.figure(2)
-    plt.plot(xi, yy)
-    plt.title('y')
-    plt.grid(True)
 
-    plt.figure(3)
-    plt.plot(xi, k)
-    plt.title('curvature')
-    plt.grid(True)
+        plt.figure(1)
+        plt.plot(xi, xx)
+        plt.title('x')
+        plt.grid(True)
 
-    plt.figure(4)
-    plt.plot(xx, yy)
-    plt.title('x-y')
-    plt.grid(True)
+        plt.figure(2)
+        plt.plot(xi, yy)
+        plt.title('y')
+        plt.grid(True)
 
-plt.show()
+        plt.figure(3)
+        plt.plot(xi, k)
+        plt.title('curvature')
+        plt.grid(True)
+
+        plt.figure(4)
+        plt.plot(xx, yy)
+        plt.title('x-y')
+        plt.grid(True)
+
+    plt.show()
