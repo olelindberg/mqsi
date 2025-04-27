@@ -7,30 +7,46 @@ from mvc_objective_function import mvc_objective_function
 from hermite_quintic        import hermite_quintic
 from curvature              import curvature
 
+
+curve = "wicket3"
+
+
 t = np.arange(-1, 1.05, 0.05)
 H0  = hermite_quintic(0,t)
 Ht  = hermite_quintic(1,t)
 Htt = hermite_quintic(2,t)
 
-r = 4.0
-l = np.pi*r
-k = 1/r
+
+if curve== "wicket2":
+
+    r     = 1.0
+    angle = np.pi/2
+    k     = 1/r
+    cx    = [r,  0, -r*angle**2, -r,   0, r*angle**2]
+    cy    = [0,r*angle, 0, 0,-r*angle, 0]
+
+elif curve == "wicket3":
+
+    r     = 1.0
+    angle = np.pi/4
+    k     = 1/r
+    cx    = [r,       0, -r*angle**2, 0, -r*angle,           0]
+    cy    = [0, r*angle,           0, 1,        0, -r*angle**2]
+
 
 #    denom = (x_t**2 + y_t**2)**1.5
 #    return (x_t * y_tt - y_t * x_tt)/denom
 
 
-xx = r*np.cos(np.pi/2*(t+1))
-yy = r*np.sin(np.pi/2*(t+1))
+xx = r*np.cos(angle*(t+1))
+yy = r*np.sin(angle*(t+1))
 
-xx_t = -r*np.pi/2*np.sin(np.pi/2*(t+1))
-yy_t = r*np.pi/2*np.cos(np.pi/2*(t+1))
+xx_t = -r*angle*np.sin(angle*(t+1))
+yy_t = r*angle*np.cos(angle*(t+1))
 
-xx_tt = -r*np.pi/2*np.pi/2*np.cos(np.pi/2*(t+1))
-yy_tt = -r*np.pi/2*np.pi/2*np.sin(np.pi/2*(t+1))
+xx_tt = -r*angle**2*np.cos(angle*(t+1))
+yy_tt = -r*angle**2*np.sin(angle*(t+1))
 
-cx = [r,  0, -r/4*np.pi**2, -r,   0, r/4*np.pi**2]
-cy = [0,r*np.pi/2, 0, 0,-r*np.pi/2, 0]
 
 x  = H0@cx
 y  = H0@cy
@@ -45,7 +61,6 @@ k  = curvature(x_t, y_t, x_tt,y_tt)
 kk = curvature(xx_t, yy_t, xx_tt,yy_tt)
 
 print("radius = ",r)
-print("length = ",l)
 
 fig, axs = plt.subplots(2,3, figsize=(10, 8))
 axs[0,0].plot(t, x)

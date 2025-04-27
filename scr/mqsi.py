@@ -36,27 +36,38 @@ def assign_constraints_grad(x0, bc_dof):
     return x0
 
 
-maxiter  = 10000
+maxiter  = 1000
 tol     = 1e-7
 solver_type = "gradient_descent" # "trust-constr" # "SLSQP" # "L-BFGS-B" # "dogleg" # "trust-ncg"
 
-curve = "wicket2"
+curve = "wicket3"
 if curve == "wicket2":
+
     r = 1.9866
     l = np.pi*r
     k = 1/r
+
+    print("Setting equality constraints for wicket2 ...")
     print("curve     = ",curve)
     print("radius    = ",r)
     print("length    = ",l)
     print("curvature = ",k)
 
-
-
     bc_dof    = [[0, 1, 3,         4],[ 0, 1, 3,          4]]
     bc_value  = [[r, 0, 0, r*np.pi/2],[-r, 0, 0, -r*np.pi/2]]
+
 elif curve == "wicket3":
-    bc_dof    = [[   0,   1,   3,   4],[],[  0,   1,   3,    4]]
-    bc_value  = [[-1.0, 0.0, 0.0, 1.0],[],[1.0, 0.0, 0.0, -1.0]]
+
+    r     = 2.0
+    angle = np.pi/4
+    k     = 1/r
+
+#    cx    = [r,       0, -r*angle**2, 0, -r*angle,           0]
+#    cy    = [0, r*angle,           0, 1,        0, -r*angle**2]
+
+    bc_dof    = [[0,   1,   3,       4],[0,3],[ 0,   1,   3,        4]]
+    bc_value  = [[r, 0.0, 0.0, r*angle],[0,r],[-r, 0.0, 0.0, -r*angle]]
+
 elif curve == "points2":
     bc_dof    = [[  0,   1,   3,   4],[  0,   1,   3,   4]]
     bc_value  = [[0.0, 1.0, 0.0, 0.0],[1.0, 1.0, 1.0, 0.0]]
@@ -89,7 +100,20 @@ if curve=="wicket2":
     x0[8] =  r/4*np.pi**2
 
 elif curve=="wicket3":
-    x0[7] = 1 # derivative at the middle point
+    # 0     - 5
+    # 6:8   - 9:11
+    # 12:14 - 15:17
+
+    # Vertex 1:
+    x0[2]  = -r*angle**2
+
+    # Vertex 2:
+    x0[7]  = -r*angle
+    x0[11] = -r*angle**2
+
+    # Vertex 3:
+    x0[14] =  r*angle**2
+
 elif curve=="points3":
 
     x0  = [[  0, 0.5,  1,    0, 0.25,  1],
