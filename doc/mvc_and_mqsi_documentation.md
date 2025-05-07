@@ -2,7 +2,7 @@
 
 The curve as a function of arc-length is 
 $$
-\mathbf{c}(s) = [x(s),y(s)]^T
+\mathbf{c}(s) = [x(s),y(s)]^T, \quad s \in [a,b]
 $$
 tangential vector
 $$
@@ -27,11 +27,39 @@ $$
 \min\int_a^b \left(\frac{d \kappa}{d s} \right)^2 ~ds
 $$
 
-## Numerical approximation
+## Curve discretization
 
-Curve discretization
+$$
+ \{s_i \in [a,b] ~|~ i=0,1,\ldots,N ~ \land ~  s_{i+1}> s_i ~ \}
+$$
 
-s 
+## Solution approximation
+
+
+Hermite quintic basis functions with $t \in [0,1]$
+$$
+\begin{align}
+h_0​(t)&=1−10t^3+15t^4−6t^5     \nonumber \\
+h_1(t)&=t−6t^3+8t^4−3t^5       \nonumber \\
+h_2(t)&=\tfrac{1}{2}t^2−\tfrac{3}{2}t^3+\tfrac{3}{2}t^4−\tfrac{1}{2}t^5 \nonumber \\
+h_3(t)&=10t^3−15t^4+6t^5       \nonumber \\
+h_4(t)&=−4t^3+7t^4−3t^5        \nonumber \\
+h_5(t)&=\tfrac{1}{2}t^3−t^4+\tfrac{1}{2}t^5
+\end{align} 
+$$
+
+Parameter
+$$
+t = \frac{s-s_i}{\Delta s_i}, \quad s \in [s_i,s_{i+1}]
+$$
+
+Hermite quintic polynomial
+$$
+\begin{align}
+H_i(s)=&f_ih_0​(t)+\Delta s_i f_i'h_1​(t)+\Delta s_i ^2f_i''h_2​(t) \nonumber \\
++&f_{i+1}h_3​(t)+\Delta s_i f_{i+1}'h_4​(t)+\Delta s_i ^2f_{i+1}''h_5​(t), \quad s \in [s_i,s_{i+1}]
+\end{align}
+$$
 
 
 ## Minimization solver 
