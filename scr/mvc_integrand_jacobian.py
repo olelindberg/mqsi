@@ -1,26 +1,28 @@
 import numpy as np
 from mvc_integrand_gradient import mvc_integrand_gradient
+from mvc_vertex_to_curve    import mvc_vertex_to_curve
 from hermite_quintic        import hermite_quintic
 
-def mvc_integrand_jacobian(x):
+def mvc_integrand_jacobian(x,s):
 
     jac = 0*x
 
     gauss_xi, gauss_w = np.polynomial.legendre.leggauss(20)
 
-    Ht   = hermite_quintic(1, gauss_xi)
-    Htt  = hermite_quintic(2, gauss_xi)
-    Httt = hermite_quintic(3, gauss_xi)
 
     for i in range(0,len(x)-6,6):
 
-        cx = np.zeros(6)
-        cx[0:3] = x[i+0:i+3]
-        cx[3:6] = x[i+6:i+9]
+        x = np.reshape(x,(3,6))
+        ii = int(i/6)
+        cx,cy = mvc_vertex_to_curve(x,ii)
+        x = x.flatten()
 
-        cy = np.zeros(6)
-        cy[0:3] = x[i+3:i+6]
-        cy[3:6] = x[i+9:i+12]
+        s_xi = 0.5*(s[ii+1] - s[ii])
+
+        Ht   = hermite_quintic(1, gauss_xi,s_xi)
+        Htt  = hermite_quintic(2, gauss_xi,s_xi)
+        Httt = hermite_quintic(3, gauss_xi,s_xi)
+
 
         cx_t   = Ht@cx
         cy_t   = Ht@cy
@@ -31,7 +33,9 @@ def mvc_integrand_jacobian(x):
 
         fx_a = np.zeros(6)
         fy_a = np.zeros(6)
+    
         for j in range(0,6):
+
 
 
             cx_at = Ht[:,j]
@@ -50,5 +54,6 @@ def mvc_integrand_jacobian(x):
         jac[i+6:i+9]  = jac[i+6:i+9]  + fx_a[3:6]
         jac[i+3:i+6]  = jac[i+3:i+6]  + fy_a[0:3]
         jac[i+9:i+12] = jac[i+9:i+12] + fy_a[3:6]
+
 
     return jac

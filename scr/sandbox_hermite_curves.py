@@ -2,8 +2,6 @@ from scipy.optimize import minimize
 import numpy as np
 import matplotlib.pyplot as plt
 
-from mvc_integrand_jacobian import mvc_integrand_jacobian
-from mvc_objective_function import mvc_objective_function
 from hermite_quintic        import hermite_quintic
 from curvature              import curvature
 

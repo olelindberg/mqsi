@@ -30,6 +30,12 @@ $$
 \min\int_a^b \left(\frac{d \kappa}{d s} \right)^2 ~ds
 $$
 
+where
+$$
+\frac{d \kappa }{ds} = \frac{x''(s)\,x'''(s) + y''(s)\,y'''(s)}{\sqrt{{x''(s)}^2 + {y''(s)}^2}}
+$$
+
+
 ## Curve discretization
 
 $$
@@ -121,29 +127,54 @@ $$
 \mathbf{q}^{n+1} = \mathbf{q}^n - \frac{d f}{d \mathbf{a}}
 $$
 
+In the curvature variation integral the integrad is
+$$
+f(s,a) = 
+\left( 
+\frac{x''(s,a)\, x'''(s,a) + y''(s,a)\, y'''(s,a)}{\sqrt{x''(s,a)^2 + y''(s,a)^2}} 
+\right) \ 2
+$$
 
+T \he partial derivative of the integrad with respect to the parameter $ a \in \{f_i,f'_i,f''_i,f_{i+1},f'_{i+1},f''_{i+1} \}$
+
+  $$
+\frac{\partial f}{\partial a} 
+=   
+\frac{2u}{v^3} \left( v \ u_a - u \ v_a \right)
+$$
+
+where 
+
+$$
+\begin{align}
+u   &= x'' x''' + y'' y''' \\
+u_a &= x''_a x''' + x'' x'''_a + y''_a y''' + y'' y'''_a \\
+v   &= \sqrt{x''^2 + y''^2} \\
+v_a &= \frac{x'' x''_a + y'' y''_a}{\sqrt{x''^2 + y''^2}}
+\end{align}
+$$
 ## Curve parametrization
 $$
 s(\xi) = \frac{\xi + 1}{2}(s_{i+1} - s_i)
 $$
 
 $$
-\frac{\partial s}{\partial \xi} = \frac{1}{2}(s_{i+1} - s_i)
+\frac{d s}{d \xi} = \frac{1}{2}(s_{i+1} - s_i)
 $$
 
 $$
-\frac{\partial x}{\partial \xi} = \frac{\partial s}{\partial \xi} \frac{\partial x}{\partial s}
+\frac{d x}{d \xi} = \frac{d s}{d \xi} \frac{d x}{d s}
 $$
 
 $$
-\frac{\partial^2 x}{\partial \xi^2} = \frac{\partial}{\partial \xi}\left(\frac{\partial s}{\partial \xi} \frac{\partial x}{\partial s}  \right)
+\frac{d^2 x}{d \xi^2} = \frac{d}{d \xi}\left(\frac{d s}{d \xi} \frac{d x}{d s}  \right)
 $$
 
 $$
-\frac{\partial^2 x}{\partial \xi^2} = 
-\frac{\partial^2  s}{\partial \xi^2} \frac{\partial x}{\partial s}
+\frac{d^2 x}{d \xi^2} = 
+\frac{d^2  s}{d \xi^2} \frac{d x}{d s}
 +
-\left(\frac{\partial s}{\partial \xi} \right)^2 \frac{\partial^2 x}{\partial s^2}
+\left(\frac{d s}{d \xi} \right)^2 \frac{d^2 x}{d s^2}
 $$
 
 ## Coordinate transforms
@@ -154,9 +185,9 @@ $$
 
 $$
 \begin{align}
-\frac{\partial x}{\partial s}     &= \frac{\partial t}{\partial s} \frac{\partial x}{\partial t} \\
-\frac{\partial^2 x}{\partial s^2} &= \frac{\partial^2 t}{\partial s^2} \frac{\partial x}{\partial t} + \left(\frac{\partial t}{\partial s} \right)^2 \frac{\partial^2 x}{\partial t^2} \\
-\frac{\partial^3 x}{\partial s^3} &= \frac{\partial^3  t}{\partial s^3} \frac{\partial x}{\partial t} + 3\frac{\partial^2  t}{\partial s^2} \frac{\partial  t}{\partial s} \frac{\partial^2 x}{\partial t^2} + \left(\frac{\partial t}{\partial s} \right)^3 \frac{\partial^3 x}{\partial t^3} \\
+\frac{d x}{d s}     &= \frac{d t}{d s} \frac{d x}{d t} \\
+\frac{d^2 x}{d s^2} &= \frac{d^2 t}{d s^2} \frac{d x}{d t} + \left(\frac{d t}{d s} \right)^2 \frac{d^2 x}{d t^2} \\
+\frac{d^3 x}{d s^3} &= \frac{d^3  t}{d s^3} \frac{d x}{d t} + 3\frac{d^2  t}{d s^2} \frac{d  t}{d s} \frac{d^2 x}{d t^2} + \left(\frac{d t}{d s} \right)^3 \frac{d^3 x}{d t^3} \\
 \end{align}
 
 

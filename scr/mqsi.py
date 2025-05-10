@@ -1,12 +1,16 @@
 from scipy.optimize import minimize
 import numpy as np
 import matplotlib.pyplot as plt
-from dataclasses import dataclass
 
-from mvc_integrand_jacobian import mvc_integrand_jacobian
-from mvc_objective_function import mvc_objective_function
-from hermite_quintic        import hermite_quintic
-from curvature              import curvature
+from mvc_integrand_jacobian        import mvc_integrand_jacobian
+from mvc_objective_function        import mvc_objective_function
+from mvc_initial_condition_wicket3 import mvc_initial_condition_wicket3
+from mvc_vertex_to_curve           import mvc_vertex_to_curve
+from hermite_quintic               import hermite_quintic
+from curvature                     import curvature
+from circle_from_three_points      import circle_from_three_points
+from circle_arc_param_u            import circle_arc_param_u
+from constants                     import constants
 
 # node dof arragement
 # 0 - x
@@ -17,105 +21,160 @@ from curvature              import curvature
 # 5 - y''
 
 
-@dataclass(frozen=True)
-class Constants:
-    NODE_DOFS: int = 6
 
-def assign_constraints(x0, bc_dof, bc_value):
-    for i in range(len(bc_dof)):
-        for j in range(len(bc_dof[i])):
-            k = i*Constants.NODE_DOFS + bc_dof[i][j]
-            x0[k] = bc_value[i][j]
+
+def assign_constraints(x0, constraint_ids, constraint_values):
+    for i in range(len(constraint_ids)):
+        for j in range(len(constraint_ids[i])):
+            k = i*constants.NODE_DOFS + constraint_ids[i][j]
+            x0[k] = constraint_values[i][j]
     return x0
 
-def assign_constraints_grad(x0, bc_dof):
-    for i in range(len(bc_dof)):
-        for j in range(len(bc_dof[i])):
-            k = i*Constants.NODE_DOFS + bc_dof[i][j]
+def assign_constraints_grad(x0, constraint_ids):
+    for i in range(len(constraint_ids)):
+        for j in range(len(constraint_ids[i])):
+            k = i*constants.NODE_DOFS + constraint_ids[i][j]
             x0[k] = 0.0
     return x0
 
 
-maxiter     = 1000
+maxiter     = 10
 tol         = 1e-5
 solver_type = "gradient_descent" # "trust-constr" # "SLSQP" # "L-BFGS-B" # "dogleg" # "trust-ncg"
 curve       = "wicket3"
-show_figures = False
+show_figures = True
+
 
 if curve == "wicket2":
 
-    r = 1.0
-    l = np.pi*r
-    k = 1/r
+    # Curve parameters:
+    r =1.0
 
-    print("Setting equality constraints for wicket2 ...")
-    print("curve     = ",curve)
+    print(f"Setting equality constraints for {curve} ...")
     print("radius    = ",r)
-    print("length    = ",l)
-    print("curvature = ",k)
 
-    bc_dof    = [[0, 1, 3,         4],[ 0, 1, 3,          4]]
-    bc_value  = [[r, 0, 0, r*np.pi/2],[-r, 0, 0, -r*np.pi/2]]
+    # Create the array of points:
+    points     = np.array([[r, 0],[-r,0]])
+    num_points = len(points)
+
+    # Create the circle:
+    center,radius = circle_from_three_points(points[0], np.array([0,r]), points[1])
+
+    # Calculate angles:
+    angles = np.zeros(num_points)
+    for i in range(num_points):
+        dx = points[i] - center
+        angles[i] = np.arctan2(dx[1], dx[0])
+
+    # Calculate arc length of curve:
+    arc_length = angles[1] - angles[0]
+    if arc_length < 0:
+        arc_length += 2*np.pi
+    
+    # Initialize array for constraint values:
+    constraint_values = np.zeros((num_points,4))
+
+    # Initialize array for initial conditions:
+    x0 = np.zeros((num_points,constants.NODE_DOFS))
+
+    for i in range(num_points):
+
+        # First point:
+        if i==0:
+
+            # Calculate curve derivatives:
+            x, y, x_u, y_u, x_uu, y_uu = circle_arc_param_u(radius,center,angles[0],arc_length,angles[i])
+
+            # Add constraints:
+            constraint_values[i,0] = x
+            constraint_values[i,1] = x_u
+            constraint_values[i,2] = y
+            constraint_values[i,3] = y_u
+
+        elif i==num_points-1:
+
+            # Calculate curve derivatives:
+            x, y, x_u, y_u, x_uu, y_uu = circle_arc_param_u(radius,center,angles[0],arc_length,angles[i])
+
+            # Add constraints:
+            constraint_values[i,0] = x
+            constraint_values[i,1] = x_u
+            constraint_values[i,2] = y
+            constraint_values[i,3] = y_u
+        
+        else:
+            NotImplementedError("Only implemented for boundary points")
+
+
+        # Set initial condition:
+        x0[i,0] = x
+        x0[i,1] = x_u
+        x0[i,2] = x_uu
+        x0[i,3] = y
+        x0[i,4] = y_u
+        x0[i,5] = y_uu
+
+
+    constraint_ids = [[0, 1, 3, 4],[ 0, 1, 3, 4]]
+
+    x0 = x0.flatten()    
 
 elif curve == "wicket3":
 
-    r     = 10
-    angle = np.pi/4
-    k     = 1/r
+    radius      = 1
+    x0,s,points = mvc_initial_condition_wicket3(radius)
+    num_points  = len(points)
 
-#    cx    = [r,       0, -r*angle**2, 0, -r*angle,           0]
-#    cy    = [0, r*angle,           0, 1,        0, -r*angle**2]
+    # Initialize array for constraint values:
+    constraint_values = []
+    constraint_ids    = []
 
-    bc_dof    = [[0,   1,   3,       4],[0,3],[ 0,   1,   3,        4]]
-    bc_value  = [[r, 0.0, 0.0, r*angle],[0,r],[-r, 0.0, 0.0, -r*angle]]
+    for i in range(num_points):
+
+        x   = x0[i,:][0]
+        x_u = x0[i,:][1]
+        y   = x0[i,:][3] 
+        y_u = x0[i,:][4] 
+
+        if 0<i and i<num_points-1:
+            # Add constraints:
+            cv = [x,y]
+            ci = [0,3]
+        else:
+            # Add constraints:
+            cv = [x,x_u,y,y_u]
+            ci = [0,1,3,4]
+
+        # Append constraint values:
+        constraint_values.append(cv)
+        constraint_ids.append(ci)
+
+    x0 = x0.flatten()
 
 elif curve == "points2":
-    bc_dof    = [[  0,   1,   3,   4],[  0,   1,   3,   4]]
-    bc_value  = [[0.0, 1.0, 0.0, 0.0],[1.0, 1.0, 1.0, 0.0]]
+    constraint_ids    = [[  0,   1,   3,   4],[  0,   1,   3,   4]]
+    constraint_values  = [[0.0, 1.0, 0.0, 0.0],[1.0, 1.0, 1.0, 0.0]]
 elif curve == "points3":
-    bc_dof    = [[  0,   3],[0,     3],[0, 3]]
-    bc_value  = [[0.0, 0.0],[0.5,0.25],[1, 1]]
+    constraint_ids    = [[  0,   3],[0,     3],[0, 3]]
+    constraint_values  = [[0.0, 0.0],[0.5,0.25],[1, 1]]
 
 
 #-----------------------------------------------------------------------------#
 # Equality constraints
 #-----------------------------------------------------------------------------#
 equality_constraints = []
-for i in range(len(bc_dof)):
-    for j in range(len(bc_dof[i])):
-        k = i*Constants.NODE_DOFS + bc_dof[i][j]
-        eq = {'type': 'eq', 'fun': lambda x,i=i,j=j,k=k: x[k] - bc_value[i][j]}
+for i in range(len(constraint_ids)):
+    for j in range(len(constraint_ids[i])):
+        k = i*constants.NODE_DOFS + constraint_ids[i][j]
+        eq = {'type': 'eq', 'fun': lambda x,i=i,j=j,k=k: x[k] - constraint_values[i][j]}
         equality_constraints.append(eq)
 
 #-----------------------------------------------------------------------------#
 # Initial condition
 #-----------------------------------------------------------------------------#
-x0 = np.zeros(Constants.NODE_DOFS * len(bc_dof))
-x0 = assign_constraints(x0, bc_dof, bc_value)
+x0 = assign_constraints(x0, constraint_ids, constraint_values)
 
-if curve=="wicket2":
-    
-    print("Setting initial condition for wicket2 ...")
-    
-    x0[2] = -r/4*np.pi**2
-    x0[8] =  r/4*np.pi**2
-
-elif curve=="wicket3":
-    # 0     - 5
-    # 6:8   - 9:11
-    # 12:14 - 15:17
-
-    # Vertex 1:
-    x0[2]  = -r*angle**2
-
-    # Vertex 2:
-    x0[7]  = -r*angle
-    x0[11] = -r*angle**2
-
-    # Vertex 3:
-    x0[14] =  r*angle**2
-
-elif curve=="points3":
+if curve=="points3":
 
     x0  = [[  0, 0.5,  1,    0, 0.25,  1],
            [0.5,   1,  1, 0.25,    1,  1],
@@ -166,11 +225,8 @@ elif solver_type == "gradient_descent":
         # Compute the gradient:
         #----------------------------------------------------#
         grad_old = grad
-        grad     = mvc_integrand_jacobian(x)
-        grad     = assign_constraints_grad(grad, bc_dof)
-
-#        print("grad")
-#        print(grad)
+        grad     = mvc_integrand_jacobian(x,s)
+        grad     = assign_constraints_grad(grad, constraint_ids)
 
         #----------------------------------------------------#
         # Compute iteration step size:
@@ -204,23 +260,18 @@ if show_figures:
     # Plotting:
     #------------------------------------------------------------#
     xi = np.arange(-1, 1.01, 0.01)
-    H0  = hermite_quintic(0,xi)
-    Ht  = hermite_quintic(1,xi)
-    Htt = hermite_quintic(2,xi)
 
-    x = np.reshape(x,(len(bc_dof),6))
-    #print("x")
-    #print(x)
+    x = np.reshape(x,(len(constraint_ids),6))
 
     for i in range(x.shape[0]-1):
 
-        cx = np.zeros(6)
-        cx[0:3] = x[i][0:3]
-        cx[3:6] = x[i+1][0:3]
+        cx,cy = mvc_vertex_to_curve(x,i)
 
-        cy = np.zeros(6)
-        cy[0:3] = x[i][3:6]
-        cy[3:6] = x[i+1][3:6]
+
+        s_xi = 0.5*(s[i+1] - s[i])
+        H0  = hermite_quintic(0,xi,s_xi)
+        Ht  = hermite_quintic(1,xi,s_xi)
+        Htt = hermite_quintic(2,xi,s_xi)
 
         xx  = H0@cx
         yy  = H0@cy
@@ -231,10 +282,7 @@ if show_figures:
         cx_tt  = Htt@cx
         cy_tt  = Htt@cy
 
-
         k  = curvature(cx_t, cy_t, cx_tt, cy_tt)
-
-
 
         plt.figure(1)
         plt.plot(xi, xx)
@@ -252,7 +300,17 @@ if show_figures:
         plt.grid(True)
 
         plt.figure(4)
+#        angle = np.arange(angles[0],angles[2],arc_length/100)
+#        xxx,yyy,tmp,tmp,tmp,tmp = circle_arc_param_u(radius,center,angles[0],arc_length,angle)
+#        plt.plot(xxx,yyy,'k')
+
+
+        for i in range(num_points):
+
+            plt.plot(points[i,0],points[i,1],'bo')
+
         plt.plot(xx, yy)
+#        plt.plot(center[0],center[1],'ro')
         plt.title('x-y')
         plt.grid(True)
 
