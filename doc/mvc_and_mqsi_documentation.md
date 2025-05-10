@@ -8,9 +8,9 @@ tangential vector
 $$
 \mathbf{t}(s) = \mathbf{c}'(s) = [x'(s),y'(s)]^T
 $$
-arch length 
+arch length parameter
 $$
-l=\int_a^b \sqrt{x'(s)^2 + y'(s)^2} ~ds
+s=\int_a^t \sqrt{x'(t)^2 + y'(t)^2} ~dt
 
 $$
 
@@ -18,6 +18,9 @@ curvature
 $$
 \kappa = ||\mathbf{t}'(s)|| = ||\mathbf{c}''(s)|| = \sqrt{x''(s)^2 + y''(s)^2}  
 $$
+
+## Minimal curvature and minimal curvature variation curves
+
 curvature minimization
 $$
 \min\int_a^b \kappa^2 ~ds
@@ -33,7 +36,7 @@ $$
  \{s_i \in [a,b] ~|~ i=0,1,\ldots,N ~ \land ~  s_{i+1}> s_i ~ \}
 $$
 
-## Solution approximation
+## Numerical curve representation
 
 
 Hermite quintic basis functions with $t \in [0,1]$
@@ -61,6 +64,56 @@ H_i(s)=&f_ih_0​(t)+\Delta s_i f_i'h_1​(t)+\Delta s_i ^2f_i''h_2​(t) \nonum
 \end{align}
 $$
 
+The curve coordinates are represented by Hermite polynomials
+$$
+\begin{align}
+x(s) &\approx x_{h,i}(s) = H_{x,i}(s), \nonumber  \\
+y(s) &\approx y_{h,i}(s) = H_{y,i}(s), \quad s \in [s_i,s_{i+1}], \quad i=1,\ldots,N-1
+\end{align}
+$$
+and the numerical curve representation is
+$$
+\mathbf{c}(s) \approx \mathbf{c}_{h,i}(s) = [x_{h,i}(s),y_{h,i}(s)]^T, \quad s \in [s_i,s_{i+1}], \quad i=1,\ldots,N -1
+$$
+
+## Curve reparametrization
+
+Coordinate transforms
+$$
+s(t) = \Delta s_i t + s_i 
+\quad \Leftrightarrow \quad
+t(s) = \frac{s - s_i}{ \Delta s_i} 
+$$
+
+Derivatives of the coordinate transforms
+$$
+\frac{d s}{d t} = \Delta s_i
+$$
+
+$$
+\frac{d t}{d s} = \frac{1}{\Delta s_i}
+$$
+
+$$
+\frac{d^2 s}{d t^2} = 0
+$$
+$$
+\frac{d^2 t}{d s^2} = 0
+$$
+
+Curve parameter derivatives
+
+$$
+\frac{d x}{d s} = \frac{d t}{d s} \frac{d x}{d t} = \frac{1}{\Delta s_i} \frac{d x}{d t}
+$$
+
+$$
+\frac{d^2 x}{d s^2} = \frac{d}{d s}\left(\frac{d t}{d s} \frac{d x}{d t}  \right) = \frac{d^2 t}{d s^2} \frac{d x}{d t} + 
+\left(\frac{d s}{d t} \right)^2 \frac{d^2 x}{d s^2}
+=
+\left(\frac{1}{\Delta s_i} \right)^2 \frac{d^2 x}{d s^2}
+$$
+
 
 ## Minimization solver 
 ###  Gradient decent
@@ -69,30 +122,6 @@ $$
 $$
 
 
-## Curve parametrization
-$$
-s(\xi) = \frac{\xi + 1}{2}(s_{i+1} - s_i)
-$$
-
-$$
-\frac{\partial{s}}{\partial \xi} = \frac{1}{2}(s_{i+1} - s_i)
-$$
-
-
-$$
-\frac{\partial{x}}{\partial \xi} = \frac{\partial{s}}{\partial \xi} \frac{\partial{x}}{\partial s}
-$$
-
-$$
-\frac{\partial^2 x}{\partial \xi^2} = \frac{\partial}{\partial \xi}\left(\frac{\partial{s}}{\partial \xi} \frac{\partial{x}}{\partial s}  \right)
-$$
-
-$$
-\frac{\partial^2 x}{\partial \xi^2} = 
-\frac{\partial^2 {s}}{\partial \xi^2} \frac{\partial x}{\partial s}
-+
-\left(\frac{\partial{s}}{\partial \xi} \right)^2 \frac{\partial^2 x}{\partial s^2}
-$$
 
 
 
