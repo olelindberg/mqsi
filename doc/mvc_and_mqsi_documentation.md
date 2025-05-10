@@ -122,8 +122,45 @@ $$
 $$
 
 
+## Curve parametrization
+$$
+s(\xi) = \frac{\xi + 1}{2}(s_{i+1} - s_i)
+$$
+
+$$
+\frac{\partial s}{\partial \xi} = \frac{1}{2}(s_{i+1} - s_i)
+$$
+
+$$
+\frac{\partial x}{\partial \xi} = \frac{\partial s}{\partial \xi} \frac{\partial x}{\partial s}
+$$
+
+$$
+\frac{\partial^2 x}{\partial \xi^2} = \frac{\partial}{\partial \xi}\left(\frac{\partial s}{\partial \xi} \frac{\partial x}{\partial s}  \right)
+$$
+
+$$
+\frac{\partial^2 x}{\partial \xi^2} = 
+\frac{\partial^2  s}{\partial \xi^2} \frac{\partial x}{\partial s}
++
+\left(\frac{\partial s}{\partial \xi} \right)^2 \frac{\partial^2 x}{\partial s^2}
+$$
+
+## Coordinate transforms
+
+$$
+s = s(t), \quad t \in [a,b]
+$$
+
+$$
+\begin{align}
+\frac{\partial x}{\partial s}     &= \frac{\partial t}{\partial s} \frac{\partial x}{\partial t} \\
+\frac{\partial^2 x}{\partial s^2} &= \frac{\partial^2 t}{\partial s^2} \frac{\partial x}{\partial t} + \left(\frac{\partial t}{\partial s} \right)^2 \frac{\partial^2 x}{\partial t^2} \\
+\frac{\partial^3 x}{\partial s^3} &= \frac{\partial^3  t}{\partial s^3} \frac{\partial x}{\partial t} + 3\frac{\partial^2  t}{\partial s^2} \frac{\partial  t}{\partial s} \frac{\partial^2 x}{\partial t^2} + \left(\frac{\partial t}{\partial s} \right)^3 \frac{\partial^3 x}{\partial t^3} \\
+\end{align}
 
 
+$$
 
 ## Monotone quintic spline interpolation
 
