@@ -7,6 +7,7 @@ from mvc_objective_function        import mvc_objective_function
 from mvc_initial_condition_wicket3 import mvc_initial_condition_wicket3
 from mvc_vertex_to_curve           import mvc_vertex_to_curve
 from hermite_quintic               import hermite_quintic
+from hermite_quintic_derivatives  import hermite_quintic_derivatives
 from curvature                     import curvature
 from circle_from_three_points      import circle_from_three_points
 from circle_arc_param_u            import circle_arc_param_u
@@ -38,7 +39,7 @@ def assign_constraints_grad(x0, constraint_ids):
     return x0
 
 
-maxiter     = 10
+maxiter     = 100
 tol         = 1e-5
 solver_type = "gradient_descent" # "trust-constr" # "SLSQP" # "L-BFGS-B" # "dogleg" # "trust-ncg"
 curve       = "wicket3"
@@ -121,7 +122,7 @@ if curve == "wicket2":
 
 elif curve == "wicket3":
 
-    radius      = 1
+    radius      = 2
     x0,s,points = mvc_initial_condition_wicket3(radius)
     num_points  = len(points)
 
@@ -259,47 +260,40 @@ if show_figures:
     #------------------------------------------------------------#
     # Plotting:
     #------------------------------------------------------------#
-    xi = np.arange(-1, 1.01, 0.01)
+    t = np.arange(0, 1.01, 0.01)
 
     x = np.reshape(x,(len(constraint_ids),6))
 
+    fig, ax = plt.subplots(2, 2, figsize=(10, 4))
     for i in range(x.shape[0]-1):
 
         cx,cy = mvc_vertex_to_curve(x,i)
 
+        s_t = (s[i+1] - s[i])        
+        xx, yy, cx_s, cy_s, cx_ss, cy_ss,cx_sss,cy_sss = hermite_quintic_derivatives(s_t,t,cx,cy)
 
-        s_xi = 0.5*(s[i+1] - s[i])
-        H0  = hermite_quintic(0,xi,s_xi)
-        Ht  = hermite_quintic(1,xi,s_xi)
-        Htt = hermite_quintic(2,xi,s_xi)
 
-        xx  = H0@cx
-        yy  = H0@cy
+        k  = curvature(cx_ss, cy_ss)
 
-        cx_t  = Ht@cx
-        cy_t  = Ht@cy
+        ss = t*s_t + s[i]
 
-        cx_tt  = Htt@cx
-        cy_tt  = Htt@cy
 
-        k  = curvature(cx_t, cy_t, cx_tt, cy_tt)
+        
+        ax[0,0].plot(ss, xx)
+        ax[0,0].set_xlabel('s')
+        ax[0,0].set_ylabel('x')
+        ax[0,0].grid(True)
 
-        plt.figure(1)
-        plt.plot(xi, xx)
-        plt.title('x')
-        plt.grid(True)
+        ax[0,1].plot(ss, yy)
+        ax[0,1].set_xlabel('s')
+        ax[0,1].set_ylabel('y')
+        ax[0,1].grid(True)
 
-        plt.figure(2)
-        plt.plot(xi, yy)
-        plt.title('y')
-        plt.grid(True)
+        ax[1,0].plot(ss, k)
+        ax[1,0].set_xlabel('s')
+        ax[1,0].set_ylabel('curvature')
+        ax[1,0].grid(True)
 
-        plt.figure(3)
-        plt.plot(xi, k)
-        plt.title('curvature')
-        plt.grid(True)
-
-        plt.figure(4)
 #        angle = np.arange(angles[0],angles[2],arc_length/100)
 #        xxx,yyy,tmp,tmp,tmp,tmp = circle_arc_param_u(radius,center,angles[0],arc_length,angle)
 #        plt.plot(xxx,yyy,'k')
@@ -307,11 +301,12 @@ if show_figures:
 
         for i in range(num_points):
 
-            plt.plot(points[i,0],points[i,1],'bo')
+            ax[1,1].plot(points[i,0],points[i,1],'bo')
 
-        plt.plot(xx, yy)
-#        plt.plot(center[0],center[1],'ro')
-        plt.title('x-y')
-        plt.grid(True)
+        ax[1,1].plot(xx, yy)
+        ax[1,1].axis('equal')
+        ax[1,1].set_xlabel('x')
+        ax[1,1].set_ylabel('y')
+        ax[1,1].grid(True)
 
     plt.show()

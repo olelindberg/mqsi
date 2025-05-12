@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from mvc_integrand_jacobian     import mvc_integrand_jacobian
 from mvc_objective_function     import mvc_objective_function
 from hermite_quintic            import hermite_quintic
+from hermite_quintic_derivatives import hermite_quintic_derivatives
 from curvature                  import curvature
 from circle_from_three_points   import circle_from_three_points
 from circle_arc_param_u         import circle_arc_param_u
@@ -19,6 +20,12 @@ from mvc_vertex_to_curve      import mvc_vertex_to_curve
 # 3 - y
 # 4 - y'
 # 5 - y''
+
+
+
+
+
+
 
 @dataclass(frozen=True)
 class Constants:
@@ -63,23 +70,9 @@ if show_figures:
     for i in range(x.shape[0]-1):
 
         cx,cy = mvc_vertex_to_curve(x,i)
-        
-        s_t   = s[i+1] - s[i]
-        t_s   = 1/s_t
 
-        H0   = hermite_quintic(0,t,s_t)
-        H_t  = hermite_quintic(1,t,s_t)
-        H_tt = hermite_quintic(2,t,s_t)
-
-
-        xx  = H0@cx
-        yy  = H0@cy
-
-        cx_s  = t_s*H_t@cx
-        cy_s  = t_s*H_t@cy
-
-        cx_ss = t_s**2*H_tt@cx
-        cy_ss = t_s**2*H_tt@cy
+        s_t = (s[i+1] - s[i])        
+        xx, yy, cx_s, cy_s, cx_ss, cy_ss = hermite_quintic_derivatives(s_t,t,cx,cy)
 
         # Curvature:
         k = np.sqrt(cx_ss**2 + cy_ss**2)
