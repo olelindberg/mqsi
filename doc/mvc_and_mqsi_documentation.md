@@ -83,3 +83,41 @@ p_i                                          & \geq 0, \quad i = 0,\ldots,n \\
 60 (z_i- z_{i-1}) - 24 h_i(p_i +p_{i-1}) + 3h_i^2(P_i - P_{i-1}) & \geq 0, \quad i = 1,\ldots,n
 \end{align}
 $$
+
+# Applications
+
+
+## 2D Wicket
+The two-dimensional wicket is a half circle
+$$
+\begin{align}
+x &= r \cos(\theta), \\ 
+y &= r \sin(\theta),\quad \theta \in [0,\pi].
+\end{align}
+$$
+Since the MVC equations are formulated in terms of arc length $s$ we are using the relation between angle and arc length of a circle 
+$$
+\theta = \frac{s}{r}
+$$
+to express the wicket in terms of arc length:
+$$
+\begin{align}
+x &= r \cos \left( \frac{s}{r} \right), \\ 
+y &= r \sin \left( \frac{s}{r} \right),\quad s \in [0,\pi \, r].
+\end{align}
+$$
+For the inital condition we need the derivatives with respect to arc length $x'$, $y'$, $x''$ and $y''$. The first derivatives are
+$$
+\begin{align}
+x' &= \cos \left( \frac{s}{r} \right), \\ 
+y' &= \sin \left( \frac{s}{r} \right),\quad s \in [0,\pi \, r].
+\end{align}
+$$
+and the second derivatives are
+$$
+\begin{align}
+x'' &= \cos \left( \frac{s}{r} \right), \\ 
+y'' &= \sin \left( \frac{s}{r} \right),\quad s \in [0,\pi \, r].
+\end{align}
+$$
+

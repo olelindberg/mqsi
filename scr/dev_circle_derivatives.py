@@ -1,19 +1,17 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def circle_arc_param_u(r, theta0, delta_theta, num_points=100):
+def circle_arc_param_u(r, theta0, dtheta, num_points=100):
 
-    L     = r * delta_theta
-    u     = np.linspace(-1, 1, num_points)
-    s     = (L / 2) * (u + 1)
-    theta = s / r + theta0
+    u     = np.linspace(0, 1, num_points)
+    theta = dtheta*u + theta0
 
-    x     = r * np.cos(theta)
-    y     = r * np.sin(theta)
-    x_u   = (L / 2) * (-np.sin(theta))
-    y_u   = (L / 2) * ( np.cos(theta))
-    x_uu = (L/2)**2 * (-1/r) * np.cos(theta)
-    y_uu = (L/2)**2 * (-1/r) * np.sin(theta)
+    x    =            r*np.cos(theta)
+    y    =            r*np.sin(theta)
+    x_u  =    -r*dtheta*np.sin(theta)
+    y_u  =     r*dtheta*np.cos(theta)
+    x_uu = -r*dtheta**2*np.cos(theta)
+    y_uu = -r*dtheta**2*np.sin(theta)
 
     return x, y, x_u, y_u, x_uu, y_uu
 

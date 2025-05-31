@@ -7,6 +7,8 @@ from mvc_integrand_jacobian import mvc_integrand_jacobian
 from mvc_objective_function import mvc_objective_function
 from hermite_quintic        import hermite_quintic
 from curvature              import curvature
+from curve_metrics          import arc_length
+
 
 # node dof arragement
 # 0 - x
@@ -36,15 +38,15 @@ def assign_constraints_grad(x0, bc_dof):
     return x0
 
 
-maxiter     = 1000
-tol         = 1e-5
+maxiter     = 1
+tol         = 1e-8
 solver_type = "gradient_descent" # "trust-constr" # "SLSQP" # "L-BFGS-B" # "dogleg" # "trust-ncg"
-curve       = "wicket3"
-show_figures = False
+curve       = "wicket3" # "wicket3" # "points2" # "points3"
+show_figures = True
 
 if curve == "wicket2":
 
-    r = 1.0
+    r = 1
     l = np.pi*r
     k = 1/r
 
@@ -54,20 +56,23 @@ if curve == "wicket2":
     print("length    = ",l)
     print("curvature = ",k)
 
-    bc_dof    = [[0, 1, 3,         4],[ 0, 1, 3,          4]]
-    bc_value  = [[r, 0, 0, r*np.pi/2],[-r, 0, 0, -r*np.pi/2]]
+    bc_dof    = [[0, 1, 3, 4],[ 0, 1, 3,  4]]
+    bc_value  = [[r, 0, 0, 1],[-r, 0, 0, -1]]
 
 elif curve == "wicket3":
 
-    r     = 10
-    angle = np.pi/4
+    r     = 2
+    angle = np.pi/2
     k     = 1/r
 
 #    cx    = [r,       0, -r*angle**2, 0, -r*angle,           0]
 #    cy    = [0, r*angle,           0, 1,        0, -r*angle**2]
 
-    bc_dof    = [[0,   1,   3,       4],[0,3],[ 0,   1,   3,        4]]
-    bc_value  = [[r, 0.0, 0.0, r*angle],[0,r],[-r, 0.0, 0.0, -r*angle]]
+
+    # 0   1   2   3   4   5
+    # x   x'  x'' y   y'  y''
+    bc_dof    = [[0, 1, 3, 4],[0,3],[ 0, 1, 3,  4]]
+    bc_value  = [[r, 0, 0, 1],[0,r],[-r, 0, 0, -1]]
 
 elif curve == "points2":
     bc_dof    = [[  0,   1,   3,   4],[  0,   1,   3,   4]]
@@ -97,8 +102,25 @@ if curve=="wicket2":
     
     print("Setting initial condition for wicket2 ...")
     
-    x0[2] = -r/4*np.pi**2
-    x0[8] =  r/4*np.pi**2
+    # parameter t in [0,1]
+    # x   =       r*cos(k*t)
+    # y   =       r*sin(k*t)
+    # xt  =    -k*r*sin(k*t)
+    # yt  =     k*r*cos(k*t)
+    # xtt = -k**2*r*cos(k*t)
+    # ytt = -k**2*r*sin(k*t)
+
+    # parameter s in [0,l]
+    # x   =    r*cos(s/r)
+    # y   =    r*sin(s/r)
+    # xt  =     -sin(s/r)
+    # yt  =      cos(s/r)
+    # xtt = -1/r*cos(s/r)
+    # ytt = -1/r*sin(s/r)
+
+
+    x0[2] = -1/r
+    x0[8] =  1/r
 
 elif curve=="wicket3":
     # 0     - 5
@@ -106,14 +128,14 @@ elif curve=="wicket3":
     # 12:14 - 15:17
 
     # Vertex 1:
-    x0[2]  = -r*angle**2
+    x0[2]  = -1/r
 
     # Vertex 2:
-    x0[7]  = -r*angle
-    x0[11] = -r*angle**2
+    x0[7]  = -1
+    x0[11] = -1/r
 
     # Vertex 3:
-    x0[14] =  r*angle**2
+    x0[14] =  1/r
 
 elif curve=="points3":
 
@@ -154,12 +176,14 @@ elif solver_type == "gradient_descent":
     #----------------------------------------------------#
     # Initialization of norms:
     #----------------------------------------------------#
-    x_norm_init = np.linalg.norm(x)
-    x_norm_old  = x_norm_init
-    
+    ds_old = 1
+    ds      = [1]
+    f = 0
     #----------------------------------------------------#
     # Main loop:
     #----------------------------------------------------#
+    f_evals  = []
+    ds_evals = []
     for i in range(maxiter):
 
         #----------------------------------------------------#
@@ -168,9 +192,6 @@ elif solver_type == "gradient_descent":
         grad_old = grad
         grad     = mvc_integrand_jacobian(x)
         grad     = assign_constraints_grad(grad, bc_dof)
-
-#        print("grad")
-#        print(grad)
 
         #----------------------------------------------------#
         # Compute iteration step size:
@@ -186,24 +207,31 @@ elif solver_type == "gradient_descent":
         #----------------------------------------------------#
         x_old = x
         x     = x - gamma*grad
-        
+
+        f_old = f
+        f     = mvc_objective_function(x)
+        f_evals.append(f)
+
+        ds_old = ds[0]
+        ds     = arc_length(x)
+        ds_evals.append(np.sum(ds))
         #----------------------------------------------------#
         # Check convergence:
         #----------------------------------------------------#
-        x_norm     = np.linalg.norm(x)
-        dx_norm    = np.abs(x_norm - x_norm_old)/x_norm_init
-        x_norm_old = x_norm
-        print(f"Iteration {i:<3}  gamma: {gamma:<10.4e}  dx_norm: {dx_norm:<10.4e}")
-        if dx_norm < tol:
-            print(f"Converged in {i} iterations.")
+        dds_rel = np.abs(ds[0]-ds_old)/ds_old
+        df_rel = np.abs(f-f_old)/f_old
+        print(f"Iteration {i:<3} df_rel: {df_rel:<10.4e}  gamma: {gamma:<10.4e}  dds_rel: {dds_rel:<10.4e}")
+        if dds_rel < tol:
             break
 
 if show_figures:
 
+    ds = arc_length(x)
+
     #------------------------------------------------------------#
     # Plotting:
     #------------------------------------------------------------#
-    xi = np.arange(-1, 1.01, 0.01)
+    xi = np.arange(0, 1.01, 0.01) 
     H0  = hermite_quintic(0,xi)
     Ht  = hermite_quintic(1,xi)
     Htt = hermite_quintic(2,xi)
@@ -212,6 +240,8 @@ if show_figures:
     #print("x")
     #print(x)
 
+
+    fig, ax = plt.subplots(2, 2, figsize=(10, 4))
     for i in range(x.shape[0]-1):
 
         cx = np.zeros(6)
@@ -222,6 +252,21 @@ if show_figures:
         cy[0:3] = x[i][3:6]
         cy[3:6] = x[i+1][3:6]
 
+#        cx[1] = ds   *cx[1]
+#        cx[2] = ds**2*cx[2]
+#        cx[4] = ds   *cx[4]
+#        cx[5] = ds**2*cx[5]
+
+        cx[1] = ds[i]   *cx[1]
+        cx[4] = ds[i]   *cx[4]
+        cx[2] = ds[i]**2*cx[2]
+        cx[5] = ds[i]**2*cx[5]
+
+        cy[1] = ds[i]   *cy[1]
+        cy[4] = ds[i]   *cy[4]
+        cy[2] = ds[i]**2*cy[2]
+        cy[5] = ds[i]**2*cy[5]
+
         xx  = H0@cx
         yy  = H0@cy
 
@@ -231,29 +276,45 @@ if show_figures:
         cx_tt  = Htt@cx
         cy_tt  = Htt@cy
 
-
         k  = curvature(cx_t, cy_t, cx_tt, cy_tt)
+        ss = xi*ds[i] + np.sum(ds[0:i])
 
 
+        
+        ax[0,0].plot(ss, xx)
+        ax[0,0].set_xlabel('s')
+        ax[0,0].set_ylabel('x')
+        ax[0,0].grid(True)
 
-        plt.figure(1)
-        plt.plot(xi, xx)
-        plt.title('x')
-        plt.grid(True)
+        ax[0,1].plot(ss, yy)
+        ax[0,1].set_xlabel('s')
+        ax[0,1].set_ylabel('y')
+        ax[0,1].grid(True)
 
-        plt.figure(2)
-        plt.plot(xi, yy)
-        plt.title('y')
-        plt.grid(True)
+        ax[1,0].plot(ss, k)
+        ax[1,0].set_xlabel('s')
+        ax[1,0].set_ylabel('curvature')
+        ax[1,0].grid(True)
 
-        plt.figure(3)
-        plt.plot(xi, k)
-        plt.title('curvature')
-        plt.grid(True)
+#        angle = np.arange(angles[0],angles[2],arc_length/100)
+#        xxx,yyy,tmp,tmp,tmp,tmp = circle_arc_param_u(radius,center,angles[0],arc_length,angle)
+#        plt.plot(xxx,yyy,'k')
 
-        plt.figure(4)
-        plt.plot(xx, yy)
-        plt.title('x-y')
-        plt.grid(True)
+
+#        for i in range(num_points):
+#
+#            ax[1,1].plot(points[i,0],points[i,1],'bo')
+
+        ax[1,1].plot(xx, yy)
+        ax[1,1].axis('equal')
+        ax[1,1].set_xlabel('x')
+        ax[1,1].set_ylabel('y')
+        ax[1,1].grid(True)
+
+    #plt.figure()
+    #plt.plot(f_evals[1:])
+#
+    #plt.figure()
+    #plt.plot(ds_evals[1:])
 
     plt.show()
