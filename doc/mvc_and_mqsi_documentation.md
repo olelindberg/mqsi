@@ -22,7 +22,7 @@ curvature minimization
 $$
 \min\int_a^b \kappa^2 ~ds
 $$
-curvature change minimization
+curvature variation minimization
 $$
 \min\int_a^b \left(\frac{d \kappa}{d s} \right)^2 ~ds
 $$
@@ -37,7 +37,7 @@ s
 ## Minimization solver 
 ###  Gradient decent
 $$
-\mathbf{q}^{n+1} = \mathbf{q}^n - \frac{d f}{d \mathbf{a}}
+\mathbf{q}^{n+1} = \mathbf{q}^n - \frac{d F}{d \mathbf{a}}
 $$
 
 

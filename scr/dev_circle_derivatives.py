@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def circle_arc_param_u(r, theta0, dtheta, num_points=100):
+def arc_parameter_circle(r, theta0, dtheta, num_points=100):
 
     u     = np.linspace(0, 1, num_points)
     theta = dtheta*u + theta0
@@ -20,7 +20,7 @@ r = 5
 theta0 = np.pi / 6  # 30 degrees
 delta_theta = np.pi / 2  # 90 degrees
 
-x, y, x_u, y_u, x_uu, y_uu = circle_arc_param_u(r, theta0, delta_theta)
+x, y, x_u, y_u, x_uu, y_uu = arc_parameter_circle(r, theta0, delta_theta)
 print(x_uu, y_uu)
 plt.plot(x, y, label="Arc")
 plt.quiver(x, y, x_u, y_u, color="red", scale=1, label="First derivative")

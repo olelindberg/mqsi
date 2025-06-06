@@ -1,6 +1,6 @@
 import numpy as np
 from circle_from_three_points import circle_from_three_points
-from circle_arc_param_u import circle_arc_param_u
+from arc_parameter_circle import arc_parameter_circle
 from constants import constants
 
 def mvc_initial_condition_wicket3(r):
@@ -29,7 +29,7 @@ def mvc_initial_condition_wicket3(r):
     for i in range(num_points):
 
         # Calculate curve derivatives:
-        x, y, x_s, y_s, x_ss, y_ss = circle_arc_param_u(radius,center,angles[0],s[-1],s[i])
+        x, y, x_s, y_s, x_ss, y_ss = arc_parameter_circle(radius,center,angles[0],s[-1],s[i])
 
         # Set initial condition:
         x0[i,0] = x

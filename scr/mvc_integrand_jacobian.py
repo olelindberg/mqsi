@@ -5,12 +5,11 @@ from curve_metrics          import arc_length
 
 def mvc_integrand_jacobian(x):
 
-
-    print(arc_length(x))
-    ds = arc_length(x)[0]
+    ds_all = arc_length(x)
 
     jac  = 0*x
-#    mass = 0*x
+    mass = 0*x
+
     gauss_xi, gauss_w = np.polynomial.legendre.leggauss(20)
 
     t    = (gauss_xi+1)/2
@@ -19,6 +18,8 @@ def mvc_integrand_jacobian(x):
     Httt = hermite_quintic(3, t)
 
     for i in range(0,len(x)-6,6):
+
+        ds = ds_all[int(i/6)]
 
         cx = np.zeros(6)
         cx[0:3] = x[i+0:i+3]
@@ -32,8 +33,6 @@ def mvc_integrand_jacobian(x):
         cx[4] = ds*cx[4]
         cx[2] = ds**2*cx[2]
         cx[5] = ds**2*cx[5]
-
-
         
         cy[1] = ds*cy[1]
         cy[4] = ds*cy[4]
@@ -70,18 +69,28 @@ def mvc_integrand_jacobian(x):
 
             fx_a[j] = np.sum(mvc_integrand_gradient(cx_t,cy_t,cx_tt,cy_tt,cx_ttt,cy_ttt,cx_at,    0,cx_att,     0,cx_attt,      0)*gauss_w/2)
             fy_a[j] = np.sum(mvc_integrand_gradient(cx_t,cy_t,cx_tt,cy_tt,cx_ttt,cy_ttt,    0,cy_at,     0,cy_att,      0,cy_attt)*gauss_w/2)
-            
-#            m[j] = np.sum(ds*gauss_w/2)
+        
+        #print(fx_a)
+
+        fx_a[1] = 1/ds*fx_a[1]
+        fx_a[4] = 1/ds*fx_a[4]
+        fx_a[2] = 1/ds**2*fx_a[2]
+        fx_a[5] = 1/ds**2*fx_a[5]
+        
+        fy_a[1] = 1/ds*fy_a[1]
+        fy_a[4] = 1/ds*fy_a[4]
+        fy_a[2] = 1/ds**2*fy_a[2]
+        fy_a[5] = 1/ds**2*fy_a[5]
 
         jac[i+0:i+3]  = jac[i+0:i+3]  + fx_a[0:3]
         jac[i+6:i+9]  = jac[i+6:i+9]  + fx_a[3:6]
         jac[i+3:i+6]  = jac[i+3:i+6]  + fy_a[0:3]
         jac[i+9:i+12] = jac[i+9:i+12] + fy_a[3:6]
 
-#        mass[i+0:i+3]  = mass[i+0:i+3]  + m[0:3]
-#        mass[i+6:i+9]  = mass[i+6:i+9]  + m[3:6]
-#        mass[i+3:i+6]  = mass[i+3:i+6]  + m[0:3]
-#        mass[i+9:i+12] = mass[i+9:i+12] + m[3:6]
+        mass[i+0:i+3]  = mass[i+0:i+3]  + 1
+        mass[i+6:i+9]  = mass[i+6:i+9]  + 1
+        mass[i+3:i+6]  = mass[i+3:i+6]  + 1
+        mass[i+9:i+12] = mass[i+9:i+12] + 1
 
-#    jac = jac/mass
+    jac = jac/mass
     return jac

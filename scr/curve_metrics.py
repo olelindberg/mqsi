@@ -8,7 +8,7 @@ def tangent_vector_length(x_s,y_s):
 def curvature(x_ss,y_ss):
     return np.sqrt(x_ss**2 + y_ss**2)
 
-def arc_length(x,debug=False):
+def arc_length(x,debug=False,tol=1e-15):
     """
     xi is the gauss quadrature points
     t  is the hermite quintic parameter 
@@ -22,29 +22,42 @@ def arc_length(x,debug=False):
     num_points = int(len(x)/6)
     for i in range(0,len(x)-6,6):
 
-        ds=1
+        x = np.reshape(x,(num_points,6))
+        ii = int(i/6)
+        cx,cy = mvc_vertex_to_curve(x,ii)
+        x = x.flatten()
+
+        dx = cx[3] - cx[0]
+        dy = cy[3] - cy[0]
+        ds = np.sqrt(dx**2 + dy**2)
+        ds_init = ds
         for k in range(100):
             
-            x = np.reshape(x,(num_points,6))
-            ii = int(i/6)
-            cx,cy = mvc_vertex_to_curve(x,ii)
-            x = x.flatten()
+            ccx = np.zeros(6)
+            ccx[0] =       cx[0]
+            ccx[1] =    ds*cx[1]
+            ccx[2] = ds**2*cx[2]
+            ccx[3] =       cx[3]
+            ccx[4] =    ds*cx[4]
+            ccx[5] = ds**2*cx[5]
 
-            cx[1] = ds*cx[1]
-            cx[4] = ds*cx[4]
-            cx[2] = ds**2*cx[2]
-            cx[5] = ds**2*cx[5]
+            ccy = np.zeros(6)
+            ccy[0] =       cy[0]
+            ccy[1] =    ds*cy[1]
+            ccy[2] = ds**2*cy[2]
+            ccy[3] =       cy[3]
+            ccy[4] =    ds*cy[4]
+            ccy[5] = ds**2*cy[5]
 
-            cy[1] = ds*cy[1]
-            cy[4] = ds*cy[4]
-            cy[2] = ds**2*cy[2]
-            cy[5] = ds**2*cy[5]
+            xx, yy, x_t, y_t, x_tt, y_tt,x_ttt,y_ttt = hermite_quintic_derivatives(1,t,ccx,ccy)
 
-            xx, yy, x_t, y_t, x_tt, y_tt,x_ttt,y_ttt = hermite_quintic_derivatives(1,t,cx,cy)
-
+            ds_old = ds
             ds = np.dot(np.sqrt(x_t**2 + y_t**2),w)
-            if (debug):
-                print("ds = ", ds)
+            dds_rel = np.abs(ds - ds_old)/ds_init
+
+            if (dds_rel<tol):
+                break
+
         l.append(ds)
 
 

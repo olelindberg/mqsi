@@ -1,14 +1,15 @@
 from scipy.optimize import minimize
 import numpy as np
 import matplotlib.pyplot as plt
-from dataclasses import dataclass
 
+from mqsi_util              import assign_constraints,assign_constraints_grad,Constants
 from mvc_integrand_jacobian import mvc_integrand_jacobian
 from mvc_objective_function import mvc_objective_function
 from hermite_quintic        import hermite_quintic
 from curvature              import curvature
 from curve_metrics          import arc_length
-
+from mqsi_constraints       import mqsi_constraints
+from mqsi_initial_conditions import mqsi_initial_conditions
 
 # node dof arragement
 # 0 - x
@@ -18,69 +19,16 @@ from curve_metrics          import arc_length
 # 4 - y'
 # 5 - y''
 
-
-@dataclass(frozen=True)
-class Constants:
-    NODE_DOFS: int = 6
-
-def assign_constraints(x0, bc_dof, bc_value):
-    for i in range(len(bc_dof)):
-        for j in range(len(bc_dof[i])):
-            k = i*Constants.NODE_DOFS + bc_dof[i][j]
-            x0[k] = bc_value[i][j]
-    return x0
-
-def assign_constraints_grad(x0, bc_dof):
-    for i in range(len(bc_dof)):
-        for j in range(len(bc_dof[i])):
-            k = i*Constants.NODE_DOFS + bc_dof[i][j]
-            x0[k] = 0.0
-    return x0
-
-
-maxiter     = 1
-tol         = 1e-8
+maxiter     = 100
+tol         = 1e-6
 solver_type = "gradient_descent" # "trust-constr" # "SLSQP" # "L-BFGS-B" # "dogleg" # "trust-ncg"
-curve       = "wicket3" # "wicket3" # "points2" # "points3"
+curve       = "wicket2"
 show_figures = True
 
-if curve == "wicket2":
-
-    r = 1
-    l = np.pi*r
-    k = 1/r
-
-    print("Setting equality constraints for wicket2 ...")
-    print("curve     = ",curve)
-    print("radius    = ",r)
-    print("length    = ",l)
-    print("curvature = ",k)
-
-    bc_dof    = [[0, 1, 3, 4],[ 0, 1, 3,  4]]
-    bc_value  = [[r, 0, 0, 1],[-r, 0, 0, -1]]
-
-elif curve == "wicket3":
-
-    r     = 2
-    angle = np.pi/2
-    k     = 1/r
-
-#    cx    = [r,       0, -r*angle**2, 0, -r*angle,           0]
-#    cy    = [0, r*angle,           0, 1,        0, -r*angle**2]
-
-
-    # 0   1   2   3   4   5
-    # x   x'  x'' y   y'  y''
-    bc_dof    = [[0, 1, 3, 4],[0,3],[ 0, 1, 3,  4]]
-    bc_value  = [[r, 0, 0, 1],[0,r],[-r, 0, 0, -1]]
-
-elif curve == "points2":
-    bc_dof    = [[  0,   1,   3,   4],[  0,   1,   3,   4]]
-    bc_value  = [[0.0, 1.0, 0.0, 0.0],[1.0, 1.0, 1.0, 0.0]]
-elif curve == "points3":
-    bc_dof    = [[  0,   3],[0,     3],[0, 3]]
-    bc_value  = [[0.0, 0.0],[0.5,0.25],[1, 1]]
-
+center          = [5,6]
+radius          = 10
+angles          = [0.2*np.pi,0.6*np.pi,1.9*np.pi]
+bc_dof,bc_value = mqsi_constraints(curve,center,radius,angles)
 
 #-----------------------------------------------------------------------------#
 # Equality constraints
@@ -95,58 +43,10 @@ for i in range(len(bc_dof)):
 #-----------------------------------------------------------------------------#
 # Initial condition
 #-----------------------------------------------------------------------------#
+print(f"Setting initial condition for {curve} ...")
 x0 = np.zeros(Constants.NODE_DOFS * len(bc_dof))
 x0 = assign_constraints(x0, bc_dof, bc_value)
-
-if curve=="wicket2":
-    
-    print("Setting initial condition for wicket2 ...")
-    
-    # parameter t in [0,1]
-    # x   =       r*cos(k*t)
-    # y   =       r*sin(k*t)
-    # xt  =    -k*r*sin(k*t)
-    # yt  =     k*r*cos(k*t)
-    # xtt = -k**2*r*cos(k*t)
-    # ytt = -k**2*r*sin(k*t)
-
-    # parameter s in [0,l]
-    # x   =    r*cos(s/r)
-    # y   =    r*sin(s/r)
-    # xt  =     -sin(s/r)
-    # yt  =      cos(s/r)
-    # xtt = -1/r*cos(s/r)
-    # ytt = -1/r*sin(s/r)
-
-
-    x0[2] = -1/r
-    x0[8] =  1/r
-
-elif curve=="wicket3":
-    # 0     - 5
-    # 6:8   - 9:11
-    # 12:14 - 15:17
-
-    # Vertex 1:
-    x0[2]  = -1/r
-
-    # Vertex 2:
-    x0[7]  = -1
-    x0[11] = -1/r
-
-    # Vertex 3:
-    x0[14] =  1/r
-
-elif curve=="points3":
-
-    x0  = [[  0, 0.5,  1,    0, 0.25,  1],
-           [0.5,   1,  1, 0.25,    1,  1],
-           [  1, 0.5,  1,    1, 0.75,  1]]
-    x0 = np.array(x0).flatten()
-
-    #x0[7]  = 1 # derivative at the middle point
-    #x0[10] = 1 # derivative at the middle point
-
+x0 = mqsi_initial_conditions(curve,x0,center,radius,angles)
 
 #-----------------------------------------------------------------------------#
 # Solve:
@@ -176,14 +76,16 @@ elif solver_type == "gradient_descent":
     #----------------------------------------------------#
     # Initialization of norms:
     #----------------------------------------------------#
-    ds_old = 1
-    ds      = [1]
-    f = 0
+    ls = np.sum(arc_length(x))
+    f  = mvc_objective_function(x)
+    x_norm_init = np.linalg.norm(x)
+    x_norm_old  = x_norm_init
+
     #----------------------------------------------------#
     # Main loop:
     #----------------------------------------------------#
     f_evals  = []
-    ds_evals = []
+    ls_evals = []
     for i in range(maxiter):
 
         #----------------------------------------------------#
@@ -192,7 +94,7 @@ elif solver_type == "gradient_descent":
         grad_old = grad
         grad     = mvc_integrand_jacobian(x)
         grad     = assign_constraints_grad(grad, bc_dof)
-
+        
         #----------------------------------------------------#
         # Compute iteration step size:
         #----------------------------------------------------#
@@ -205,6 +107,9 @@ elif solver_type == "gradient_descent":
         #----------------------------------------------------#
         # Update the solution:
         #----------------------------------------------------#
+
+        xx = np.zeros((len(x),3))
+        xx[:,0] = x
         x_old = x
         x     = x - gamma*grad
 
@@ -212,17 +117,34 @@ elif solver_type == "gradient_descent":
         f     = mvc_objective_function(x)
         f_evals.append(f)
 
-        ds_old = ds[0]
+        ls_old = ls
         ds     = arc_length(x)
-        ds_evals.append(np.sum(ds))
+        ls = np.sum(ds)
+        ls_evals.append(ls)
+
         #----------------------------------------------------#
         # Check convergence:
         #----------------------------------------------------#
-        dds_rel = np.abs(ds[0]-ds_old)/ds_old
+#        print(f"ls_old {ls_old}")
+#        print(f"ls     {ls    }")
+
+        ls_rel = np.abs(ls-ls_old)/ls_old
         df_rel = np.abs(f-f_old)/f_old
-        print(f"Iteration {i:<3} df_rel: {df_rel:<10.4e}  gamma: {gamma:<10.4e}  dds_rel: {dds_rel:<10.4e}")
-        if dds_rel < tol:
+        print(f"Iteration {i:<3} df_rel: {df_rel:<10.4e}  gamma: {gamma:<10.4e}  ls_rel: {ls_rel:<10.4e} ls: {ls}")
+
+        if ls_rel < tol:
             break
+
+        x_norm     = np.linalg.norm(x)
+        dx_norm    = np.abs(x_norm - x_norm_old)/x_norm_init
+        x_norm_old = x_norm
+#        print(f"Iteration {i:<3}  gamma: {gamma:<10.4e}  dx_norm: {dx_norm:<10.4e}")
+#        if dx_norm < tol:
+#            print(f"Converged in {i} iterations.")
+#            break
+
+
+
 
 if show_figures:
 
@@ -297,7 +219,7 @@ if show_figures:
         ax[1,0].grid(True)
 
 #        angle = np.arange(angles[0],angles[2],arc_length/100)
-#        xxx,yyy,tmp,tmp,tmp,tmp = circle_arc_param_u(radius,center,angles[0],arc_length,angle)
+#        xxx,yyy,tmp,tmp,tmp,tmp = arc_parameter_circle(radius,center,angles[0],arc_length,angle)
 #        plt.plot(xxx,yyy,'k')
 
 
