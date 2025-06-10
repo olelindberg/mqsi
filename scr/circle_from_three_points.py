@@ -1,5 +1,12 @@
 import numpy as np
 
+def arc_parameter(center,point):
+
+    dx = point[0] - center[0]
+    dy = point[1] - center[1]
+    theta = np.arctan2(dy, dx)
+    return theta
+
 def circle_from_three_points(p1, p2, p3):
     A = np.array([
         [p1[0], p1[1], 1],
@@ -27,9 +34,14 @@ def circle_from_three_points(p1, p2, p3):
     cy = 0.5 * Dy / a
     r  = np.sqrt(cx**2 + cy**2 + C / a)
 
+
+
     center = np.array([cx, cy])
     radius = r
-    
-    return center, radius
+
+    # Calculate the angle of the center point relative to the first point
+    arc_angles = np.array([arc_parameter(center, p1),arc_parameter(center, p2),arc_parameter(center, p3)])
+
+    return center,radius,arc_angles
 
 

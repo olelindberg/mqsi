@@ -19,10 +19,10 @@ from mqsi_initial_conditions import mqsi_initial_conditions
 # 4 - y'
 # 5 - y''
 
-maxiter     = 100
+maxiter     = 1
 tol         = 1e-6
 solver_type = "gradient_descent" # "trust-constr" # "SLSQP" # "L-BFGS-B" # "dogleg" # "trust-ncg"
-curve       = "wicket2"
+curve       = "wicket5"
 show_figures = True
 
 center          = [5,6]
