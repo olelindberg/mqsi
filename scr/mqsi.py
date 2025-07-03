@@ -118,7 +118,7 @@ elif solver_type == "gradient_descent":
         f_evals.append(f)
 
         ls_old = ls
-        ds     = arc_length(x)
+        ds     = arc_length(x,debug=True)
         ls = np.sum(ds)
         ls_evals.append(ls)
 
@@ -148,7 +148,7 @@ elif solver_type == "gradient_descent":
 
 if show_figures:
 
-    ds = arc_length(x)
+    ds = arc_length(x, debug=True)
 
     #------------------------------------------------------------#
     # Plotting:

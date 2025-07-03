@@ -6,7 +6,7 @@ from curve_metrics   import arc_length
 
 def mvc_objective_function(x):
     
-    ds = arc_length(x)
+    ds = arc_length(x, debug=False)
 
 
 

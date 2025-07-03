@@ -13,7 +13,9 @@ def arc_length(x,debug=False,tol=1e-15):
     xi is the gauss quadrature points
     t  is the hermite quintic parameter 
     """
-    print("Computing arc length ...")
+
+    if debug:
+        print("Computing arc length ...")
     
     gausss_xi, gauss_w = np.polynomial.legendre.leggauss(24)
     t = 0.5*(gausss_xi+1)
@@ -27,8 +29,9 @@ def arc_length(x,debug=False,tol=1e-15):
         x = np.reshape(x,(num_points,6))
         ii = int(i/6)
     
-        print("dof   i = ",  i)
-        print("curve i = ", ii)
+        if debug:
+            print("dof   i = ",  i)
+            print("curve i = ", ii)
         
         cx,cy = mvc_vertex_to_curve(x,ii)
         x = x.flatten()
@@ -37,7 +40,7 @@ def arc_length(x,debug=False,tol=1e-15):
         dy = cy[3] - cy[0]
         ds = np.sqrt(dx**2 + dy**2)
         ds_init = ds
-        for k in range(100):
+        for k in range(10):
             
             ccx = np.zeros(6)
             ccx[0] =       cx[0]
@@ -58,14 +61,18 @@ def arc_length(x,debug=False,tol=1e-15):
             xx, yy, x_t, y_t, x_tt, y_tt,x_ttt,y_ttt = hermite_quintic_derivatives(1,t,ccx,ccy)
 
             ds_old = ds
-            ds = 0.9*ds+ 0.1*np.dot(np.sqrt(x_t**2 + y_t**2),w)
+            ds = np.dot(np.sqrt(x_t**2 + y_t**2),w)
             dds_rel = np.abs(ds - ds_old)/ds_init
             
-            print(f"Iteration {k+1}: ds = {ds:.6f}, dds_rel = {dds_rel:.6e}")
+            if debug:
+                print(f"Iteration {k+1}: ds = {ds:.6f}, dds_rel = {dds_rel:.6e}")
+            
             if (dds_rel<tol):
                 break
 
         l.append(ds)
 
+    if debug:
+        print(f"Computed arc lengths: {l}")
 
     return l

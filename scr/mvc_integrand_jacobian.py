@@ -5,7 +5,7 @@ from curve_metrics          import arc_length
 
 def mvc_integrand_jacobian(x):
 
-    ds_all = arc_length(x)
+    ds_all = arc_length(x,debug=True)
 
     jac  = 0*x
     mass = 0*x

@@ -70,7 +70,7 @@ def mqsi_constraints(curve,center,radius,theta):
 
     elif curve == "wicket5":
 
-        points = [[1.0, 0.5],[0.5, 1.0],[0.0, 0.5],[0.5, 0.0]]
+        points = [[1.0, 0.0],[0.0, 1.0],[-1.0,0.0 ],[0.0,-1.0]]
 
         bc_dof   = []
         bc_value = []
