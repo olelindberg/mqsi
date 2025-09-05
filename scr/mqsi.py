@@ -11,6 +11,8 @@ from curve_metrics          import arc_length
 from mqsi_constraints       import mqsi_constraints
 from mqsi_initial_conditions import mqsi_initial_conditions
 from mvc_vertex_to_curve   import mvc_vertex_to_curve
+from mvc_integrand_jacobian_arc_length import mvc_integrand_jacobian_arc_length
+
 # node dof arragement
 # 0 - x
 # 1 - x'
@@ -18,18 +20,27 @@ from mvc_vertex_to_curve   import mvc_vertex_to_curve
 # 3 - y
 # 4 - y'
 # 5 - y''
-print(1.57285887)
-print(np.pi/2)
+print(1*np.pi/2)
+print(2*np.pi/2)
+print(3*np.pi/2)
+print(4*np.pi/2)
 #asdf
-maxiter     = 1
-tol         = 1e-6
+itermax_outer  = 1
+itertol_outer  = 1e-4
+itermax_inner  = 1000
+itertol_inner  = 1e-6
 solver_type = "gradient_descent" # "trust-constr" # "SLSQP" # "L-BFGS-B" # "dogleg" # "trust-ncg"
-curve       = "wicket2"
+curve       = "wicket5"
 show_figures = True
 
 center          = [0,0]
 radius          = 1
 angles          = [0.0*np.pi,0.5*np.pi,1.0*np.pi]
+
+center          = [5,6]
+radius          = 10
+angles          = [0.2*np.pi,0.6*np.pi,1.9*np.pi]
+
 bc_dof,bc_value = mqsi_constraints(curve,center,radius,angles)
 
 #-----------------------------------------------------------------------------#
@@ -60,7 +71,7 @@ if solver_type == "trust-constr":
     options = {"maxiter" : maxiter,'disp': True, "verbose" : 1}
     method =  'trust-constr' # 'SLSQP' #
     
-    res     = minimize(mvc_objective_function, x0, jac=mvc_integrand_jacobian,constraints=equality_constraints , tol=tol, method=method,options=options)
+    res     = minimize(mvc_objective_function, x0, jac=mvc_integrand_jacobian,constraints=equality_constraints , itertol_inner=itertol_inner, method=method,options=options)
 
     x = res.x
 
@@ -74,6 +85,7 @@ elif solver_type == "gradient_descent":
     x     = x0
     x_old = 0*x0
     grad  = np.zeros(len(x))
+
 
     #----------------------------------------------------#
     # Initialization of norms:
@@ -99,79 +111,101 @@ elif solver_type == "gradient_descent":
         dy = cy[3] - cy[0]
         ds[ii] = np.sqrt(dx**2 + dy**2)
 
-
-
-
-
-
-
-
-    ds     = arc_length(x,ds,debug=True)
     ls = np.sum(ds)
 
+    ds_old     = 0*ds
+    grad_arc   = 0*ds
+    
+    for j in range(itermax_outer):
 
-    #----------------------------------------------------#
-    # Main loop:
-    #----------------------------------------------------#
-    f_evals  = []
-    ls_evals = []
-    for i in range(maxiter):
-
-        #----------------------------------------------------#
-        # Compute the gradient:
-        #----------------------------------------------------#
-        grad_old = grad
-        grad     = mvc_integrand_jacobian(x,ds)
-        grad     = assign_constraints_grad(grad, bc_dof)
-        
-        #----------------------------------------------------#
-        # Compute iteration step size:
-        #----------------------------------------------------#
-        dx    = x - x_old
-        dgrad = grad - grad_old
-        gamma = 1e-10
-        if dgrad.dot(dgrad)>0:
-            gamma = np.abs(dx.dot(dgrad))/dgrad.dot(dgrad)
+        #ds     = arc_length(x,ds,itermax=100)
+        #ls_old = ls
+        #ls     = np.sum(ds)
+        #
+        #dls_rel = np.abs(ls-ls_old)/ls
+#
+        #if (dls_rel<itertol_outer):
+        #    print(f"outer      iteration done: iter = {j:<8d} arc length: ls = {ls:<10.8}, dls_rel = {dls_rel:<10.8}")
+        #    break
 
         #----------------------------------------------------#
-        # Update the solution:
+        # Main loop:
         #----------------------------------------------------#
+        f_evals  = []
+        ls_evals = []
+        iter_inner = 0
+        while (itermax_inner>0):
 
-        xx = np.zeros((len(x),3))
-        xx[:,0] = x
-        x_old = x
-        x     = x - gamma*grad
-        ds     = arc_length(x,ds,debug=True)
+            grad_arc_old = grad_arc
+            grad_arc     = mvc_integrand_jacobian_arc_length(x,ds)
 
-        #f_old = f
-        #f     = mvc_objective_function(x)
-        #f_evals.append(f)
+            dds = ds - ds_old
+            dgrad_arc = grad_arc - grad_arc_old
+            gamma_arc = 1e-10
+            if dgrad_arc.dot(dgrad_arc)>0 and iter_inner>0:
+                gamma_arc = np.abs(dds.dot(dgrad_arc))/dgrad_arc.dot(dgrad_arc)
 
-        ls_old = ls
-        ls = np.sum(ds)
-        ls_evals.append(ls)
+            ds_old = ds
+            dds    = gamma_arc*grad_arc
+            ds     = ds - dds
 
-        #----------------------------------------------------#
-        # Check convergence:
-        #----------------------------------------------------#
-#        print(f"ls_old {ls_old}")
-#        print(f"ls     {ls    }")
+            #----------------------------------------------------#
+            # Compute the gradient:
+            #----------------------------------------------------#
+            grad_old = grad
+            grad     = mvc_integrand_jacobian(x,ds)
+            grad     = assign_constraints_grad(grad, bc_dof)
 
-        ls_rel = np.abs(ls-ls_old)/ls_old
-        #df_rel = np.abs(f-f_old)/f_old
-        print(f"Iteration {i:<3} df_rel: {0:<10.4e}  gamma: {gamma:<10.4e}  ls_rel: {ls_rel:<10.4e} ls: {ls}")
 
-#        if ls_rel < tol:
-#            break
+            #----------------------------------------------------#
+            # Compute iteration step size:
+            #----------------------------------------------------#
+            dx    = x - x_old
+            dgrad = grad - grad_old
+            gamma = 1e-10
+            if dgrad.dot(dgrad)>0 and iter_inner>0:
+                gamma = np.abs(dx.dot(dgrad))/dgrad.dot(dgrad)
 
-        x_norm     = np.linalg.norm(x)
-        dx_norm    = np.abs(x_norm - x_norm_old)/x_norm_init
-        x_norm_old = x_norm
-#        print(f"Iteration {i:<3}  gamma: {gamma:<10.4e}  dx_norm: {dx_norm:<10.4e}")
-#        if dx_norm < tol:
-#            print(f"Converged in {i} iterations.")
-#            break
 
+
+
+
+            #----------------------------------------------------#
+            # Update the solution:
+            #----------------------------------------------------#
+            xx = np.zeros((len(x),3))
+            xx[:,0] = x
+            x_old = x
+            dxx = gamma*grad
+            x   = x - dxx
+
+
+
+            ds_rel = np.sum(np.abs(dds)/ds)
+            print(f"arc length iteration done, iter = {iter_inner:<4}, ls = {np.sum(ds):<10.10}, ds_rel = {ds_rel:<10.10}")
+
+            if 0 < iter_inner and iter_inner < itermax_inner and ds_rel < itertol_inner:
+                break
+
+
+
+            #----------------------------------------------------#
+            # Check convergence:
+            #----------------------------------------------------#
+            #dx_rel = np.sum(np.abs(dxx))/np.sum(np.abs(x))
+            #if (iter_inner>0):
+            #print(f"inner      iteration done, iter = {iter_inner:<4}, dx_rel = {dx_rel:<10.10}")
+            if iter_inner+1>itermax_inner:
+                break
+
+            x_norm     = np.linalg.norm(x)
+            dx_norm    = np.abs(x_norm - x_norm_old)/x_norm_init
+            x_norm_old = x_norm
+            iter_inner = iter_inner + 1
+    #        print(f"Iteration {i:<3}  gamma: {gamma:<10.4e}  dx_norm: {dx_norm:<10.4e}")
+    #        if dx_norm < itertol_inner:
+    #            print(f"Converged in {i} iterations.")
+    #            break
 
 
 

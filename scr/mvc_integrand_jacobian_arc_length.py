@@ -54,14 +54,18 @@ def mvc_integrand_jacobian_arc_length(x,ds_all):
         cy[0:3] = x[i+3:i+6]
         cy[3:6] = x[i+9:i+12]
 
+        cx[0] = 0
         cx[1] = cx[1]
-        cx[4] = cx[4]
         cx[2] = 2*ds*cx[2]
+        cx[3] = 0
+        cx[4] = cx[4]
         cx[5] = 2*ds*cx[5]
-        
+
+        cy[0] = 0
         cy[1] = cy[1]
-        cy[4] = cy[4]
         cy[2] = 2*ds*cy[2]
+        cy[3] = 0
+        cy[4] = cy[4]
         cy[5] = 2*ds*cy[5]
 
         cx_at   = Ht@cx

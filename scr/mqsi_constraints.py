@@ -96,4 +96,5 @@ def mqsi_constraints(curve,center,radius,theta):
                 bc_dof.append  ([   0,    3])
                 bc_value.append([x[1], y[1]])
 
+
     return bc_dof,bc_value

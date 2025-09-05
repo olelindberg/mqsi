@@ -9,51 +9,36 @@ def tangent_vector_length(x_s,y_s):
 def curvature(x_ss,y_ss):
     return np.sqrt(x_ss**2 + y_ss**2)
 
-def arc_length(x,ds,debug=False,tol=1e-15):
-    """
-    xi is the gauss quadrature points
-    t  is the hermite quintic parameter 
-    """
-
-    if debug:
-        print("Computing arc length ...")
+def arc_length(x,ds,itermax=100,tol=1e-10):
     
-    gausss_xi, gauss_w = np.polynomial.legendre.leggauss(24)
-    t = 0.5*(gausss_xi+1)
-    w = 0.5*gauss_w
 
-    l = []
-
-    num_points = int(len(x)/6)
+    ds_old     = 0*ds
+    grad_arc   = 0*ds
+    for k in range(itermax):
 
 
-
-    ds_old = 0*ds
-    grad   = 0*ds
-    for k in range(100):
-
-
-        grad_old = grad
-
-        grad     = mvc_integrand_jacobian_arc_length(x,ds)
+        grad_arc_old = grad_arc
+        grad_arc     = mvc_integrand_jacobian_arc_length(x,ds)
         
         #----------------------------------------------------#
         # Compute iteration step size:
         #----------------------------------------------------#
         dds = ds - ds_old
-        dgrad = grad - grad_old
-#        print(dgrad)
-        gamma = 1e-10
-        if dgrad.dot(dgrad)>0:
-            gamma = np.abs(dds.dot(dgrad))/dgrad.dot(dgrad)
+        dgrad_arc = grad_arc - grad_arc_old
+        gamma_arc = 1e-10
+        if dgrad_arc.dot(dgrad_arc)>0 and k>0:
+            gamma_arc = np.abs(dds.dot(dgrad_arc))/dgrad_arc.dot(dgrad_arc)
 
         #----------------------------------------------------#
         # Update the solution:
         #----------------------------------------------------#
         ds_old = ds
-        ds     = ds + gamma*grad
-#        print(f"  Iter {k:<3} gamma: {gamma:<10.4e}")
-#        print(grad)
-        print(ds)
+        ds     = ds - gamma_arc*grad_arc
+
+        ds_rel = np.sum(np.abs(grad_arc)/np.abs(ds))
+        if ds_rel<tol:
+            print(f"arc length iteration done, iter = {k:<4}, ls = {np.sum(ds):<10.10}")
+            break
+
 
     return ds

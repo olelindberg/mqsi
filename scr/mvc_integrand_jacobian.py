@@ -91,5 +91,5 @@ def mvc_integrand_jacobian(x,ds_all):
         mass[i+3:i+6]  = mass[i+3:i+6]  + 1
         mass[i+9:i+12] = mass[i+9:i+12] + 1
 
-    jac = jac#/mass
+    jac = jac/mass
     return jac
