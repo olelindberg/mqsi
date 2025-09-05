@@ -1,6 +1,7 @@
 import numpy as np
 from mvc_vertex_to_curve import mvc_vertex_to_curve
 from hermite_quintic_derivatives import hermite_quintic_derivatives
+from mvc_integrand_jacobian_arc_length import mvc_integrand_jacobian_arc_length
 
 def tangent_vector_length(x_s,y_s):
     return np.sqrt(x_s**2 + y_s**2)
@@ -8,7 +9,7 @@ def tangent_vector_length(x_s,y_s):
 def curvature(x_ss,y_ss):
     return np.sqrt(x_ss**2 + y_ss**2)
 
-def arc_length(x,debug=False,tol=1e-15):
+def arc_length(x,ds,debug=False,tol=1e-15):
     """
     xi is the gauss quadrature points
     t  is the hermite quintic parameter 
@@ -24,55 +25,35 @@ def arc_length(x,debug=False,tol=1e-15):
     l = []
 
     num_points = int(len(x)/6)
-    for i in range(0,len(x)-6,6): # Loop over the curves, not the vertices
 
-        x = np.reshape(x,(num_points,6))
-        ii = int(i/6)
-    
-        if debug:
-            print("dof   i = ",  i)
-            print("curve i = ", ii)
+
+
+    ds_old = 0*ds
+    grad   = 0*ds
+    for k in range(100):
+
+
+        grad_old = grad
+
+        grad     = mvc_integrand_jacobian_arc_length(x,ds)
         
-        cx,cy = mvc_vertex_to_curve(x,ii)
-        x = x.flatten()
+        #----------------------------------------------------#
+        # Compute iteration step size:
+        #----------------------------------------------------#
+        dds = ds - ds_old
+        dgrad = grad - grad_old
+#        print(dgrad)
+        gamma = 1e-10
+        if dgrad.dot(dgrad)>0:
+            gamma = np.abs(dds.dot(dgrad))/dgrad.dot(dgrad)
 
-        dx = cx[3] - cx[0]
-        dy = cy[3] - cy[0]
-        ds = np.sqrt(dx**2 + dy**2)
-        ds_init = ds
-        for k in range(10):
-            
-            ccx = np.zeros(6)
-            ccx[0] =       cx[0]
-            ccx[1] =    ds*cx[1]
-            ccx[2] = ds**2*cx[2]
-            ccx[3] =       cx[3]
-            ccx[4] =    ds*cx[4]
-            ccx[5] = ds**2*cx[5]
+        #----------------------------------------------------#
+        # Update the solution:
+        #----------------------------------------------------#
+        ds_old = ds
+        ds     = ds + gamma*grad
+#        print(f"  Iter {k:<3} gamma: {gamma:<10.4e}")
+#        print(grad)
+        print(ds)
 
-            ccy = np.zeros(6)
-            ccy[0] =       cy[0]
-            ccy[1] =    ds*cy[1]
-            ccy[2] = ds**2*cy[2]
-            ccy[3] =       cy[3]
-            ccy[4] =    ds*cy[4]
-            ccy[5] = ds**2*cy[5]
-
-            xx, yy, x_t, y_t, x_tt, y_tt,x_ttt,y_ttt = hermite_quintic_derivatives(1,t,ccx,ccy)
-
-            ds_old = ds
-            ds = np.dot(np.sqrt(x_t**2 + y_t**2),w)
-            dds_rel = np.abs(ds - ds_old)/ds_init
-            
-            if debug:
-                print(f"Iteration {k+1}: ds = {ds:.6f}, dds_rel = {dds_rel:.6e}")
-            
-            if (dds_rel<tol):
-                break
-
-        l.append(ds)
-
-    if debug:
-        print(f"Computed arc lengths: {l}")
-
-    return l
+    return ds

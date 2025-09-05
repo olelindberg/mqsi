@@ -10,7 +10,7 @@ from curvature              import curvature
 from curve_metrics          import arc_length
 from mqsi_constraints       import mqsi_constraints
 from mqsi_initial_conditions import mqsi_initial_conditions
-
+from mvc_vertex_to_curve   import mvc_vertex_to_curve
 # node dof arragement
 # 0 - x
 # 1 - x'
@@ -18,16 +18,18 @@ from mqsi_initial_conditions import mqsi_initial_conditions
 # 3 - y
 # 4 - y'
 # 5 - y''
-
+print(1.57285887)
+print(np.pi/2)
+#asdf
 maxiter     = 1
 tol         = 1e-6
 solver_type = "gradient_descent" # "trust-constr" # "SLSQP" # "L-BFGS-B" # "dogleg" # "trust-ncg"
-curve       = "wicket5"
+curve       = "wicket2"
 show_figures = True
 
-center          = [5,6]
-radius          = 10
-angles          = [0.2*np.pi,0.6*np.pi,1.9*np.pi]
+center          = [0,0]
+radius          = 1
+angles          = [0.0*np.pi,0.5*np.pi,1.0*np.pi]
 bc_dof,bc_value = mqsi_constraints(curve,center,radius,angles)
 
 #-----------------------------------------------------------------------------#
@@ -76,10 +78,37 @@ elif solver_type == "gradient_descent":
     #----------------------------------------------------#
     # Initialization of norms:
     #----------------------------------------------------#
-    ls = np.sum(arc_length(x))
-    f  = mvc_objective_function(x)
+    #f  = mvc_objective_function(x)
     x_norm_init = np.linalg.norm(x)
     x_norm_old  = x_norm_init
+
+    num_points = int(len(x)/6)
+
+    ds = np.zeros(num_points-1)
+
+    for i in range(0,len(x)-6,6): # Loop over the curves, not the vertices
+
+        x = np.reshape(x,(num_points,6))
+        ii = int(i/6)
+    
+        
+        cx,cy = mvc_vertex_to_curve(x,ii)
+        x = x.flatten()
+
+        dx = cx[3] - cx[0]
+        dy = cy[3] - cy[0]
+        ds[ii] = np.sqrt(dx**2 + dy**2)
+
+
+
+
+
+
+
+
+    ds     = arc_length(x,ds,debug=True)
+    ls = np.sum(ds)
+
 
     #----------------------------------------------------#
     # Main loop:
@@ -92,7 +121,7 @@ elif solver_type == "gradient_descent":
         # Compute the gradient:
         #----------------------------------------------------#
         grad_old = grad
-        grad     = mvc_integrand_jacobian(x)
+        grad     = mvc_integrand_jacobian(x,ds)
         grad     = assign_constraints_grad(grad, bc_dof)
         
         #----------------------------------------------------#
@@ -112,13 +141,13 @@ elif solver_type == "gradient_descent":
         xx[:,0] = x
         x_old = x
         x     = x - gamma*grad
+        ds     = arc_length(x,ds,debug=True)
 
-        f_old = f
-        f     = mvc_objective_function(x)
-        f_evals.append(f)
+        #f_old = f
+        #f     = mvc_objective_function(x)
+        #f_evals.append(f)
 
         ls_old = ls
-        ds     = arc_length(x,debug=True)
         ls = np.sum(ds)
         ls_evals.append(ls)
 
@@ -129,11 +158,11 @@ elif solver_type == "gradient_descent":
 #        print(f"ls     {ls    }")
 
         ls_rel = np.abs(ls-ls_old)/ls_old
-        df_rel = np.abs(f-f_old)/f_old
-        print(f"Iteration {i:<3} df_rel: {df_rel:<10.4e}  gamma: {gamma:<10.4e}  ls_rel: {ls_rel:<10.4e} ls: {ls}")
+        #df_rel = np.abs(f-f_old)/f_old
+        print(f"Iteration {i:<3} df_rel: {0:<10.4e}  gamma: {gamma:<10.4e}  ls_rel: {ls_rel:<10.4e} ls: {ls}")
 
-        if ls_rel < tol:
-            break
+#        if ls_rel < tol:
+#            break
 
         x_norm     = np.linalg.norm(x)
         dx_norm    = np.abs(x_norm - x_norm_old)/x_norm_init
@@ -147,8 +176,6 @@ elif solver_type == "gradient_descent":
 
 
 if show_figures:
-
-    ds = arc_length(x, debug=True)
 
     #------------------------------------------------------------#
     # Plotting:

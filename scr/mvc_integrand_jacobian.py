@@ -3,9 +3,8 @@ from mvc_integrand_gradient import mvc_integrand_gradient
 from hermite_quintic        import hermite_quintic
 from curve_metrics          import arc_length
 
-def mvc_integrand_jacobian(x):
+def mvc_integrand_jacobian(x,ds_all):
 
-    ds_all = arc_length(x,debug=True)
 
     jac  = 0*x
     mass = 0*x
@@ -92,5 +91,5 @@ def mvc_integrand_jacobian(x):
         mass[i+3:i+6]  = mass[i+3:i+6]  + 1
         mass[i+9:i+12] = mass[i+9:i+12] + 1
 
-    jac = jac/mass
+    jac = jac#/mass
     return jac
