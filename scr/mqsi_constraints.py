@@ -3,7 +3,10 @@ import numpy as np
 from arc_parameter_circle     import arc_parameter_circle
 from circle_from_three_points import circle_from_three_points
 
-def mqsi_constraints(curve,center,radius,theta):
+from finite_difference_coefficients import finite_difference_coefficients
+
+
+def mqsi_constraints(curve,center,radius,theta,points=[]):
 
     print(f"Setting equality constraints for {curve} ...")
 
@@ -96,5 +99,89 @@ def mqsi_constraints(curve,center,radius,theta):
                 bc_dof.append  ([   0,    3])
                 bc_value.append([x[1], y[1]])
 
+
+    elif curve == "pointset":
+
+        bc_dof   = []
+        bc_value = []
+
+        for i in range(len(points)):
+
+            if i == 0:               # First point
+
+                
+                x0 = points[i  ][0]
+                x1 = points[i+1][0]
+                x2 = points[i+2][0]
+
+                y0 = points[i  ][1]
+                y1 = points[i+1][1]
+                y2 = points[i+2][1]
+
+                dx0 = x1 - x0
+                dx1 = x2 - x1
+
+                dy0 = y1 - y0
+                dy1 = y2 - y1
+
+                ds0 = np.sqrt(dx0**2 + dy0**2) 
+                ds1 = np.sqrt(dx1**2 + dy1**2)
+
+                s0 = 0.0
+                s1 = ds0
+                s2 = ds0 + ds1 
+
+                s = [s0,s1,s2]
+                x = [x0,x1,x2]
+                y = [y0,y1,y2]
+
+                c1 = finite_difference_coefficients(s,s0,1)
+
+                x_s = c1.dot(x)
+                y_s = c1.dot(y)
+
+                bc_dof.append  ([   0,      1,    3,      4])
+                bc_value.append([points[i][0], x_s, points[i][1], y_s])
+
+            elif i == len(points)-1: # Last point
+
+                x0 = points[i-2][0]
+                x1 = points[i-1][0]
+                x2 = points[i  ][0]
+
+                y0 = points[i-2][1]
+                y1 = points[i-1][1]
+                y2 = points[i  ][1]
+
+                dx0 = x1 - x0
+                dx1 = x2 - x1
+
+                dy0 = y1 - y0
+                dy1 = y2 - y1
+
+                ds0 = np.sqrt(dx0**2 + dy0**2) 
+                ds1 = np.sqrt(dx1**2 + dy1**2)
+
+                s0 = 0.0
+                s1 = ds0
+                s2 = ds0 + ds1 
+
+
+                s = [s0,s1,s2]
+                x = [x0,x1,x2]
+                y = [y0,y1,y2]
+
+                c1 = finite_difference_coefficients(s,s2,1)
+
+                x_s = c1.dot(x)
+                y_s = c1.dot(y)
+
+                bc_dof.append  ([   0,      1,    3,      4])
+                bc_value.append([points[i][0], x_s, points[i][1], y_s])
+
+            else:                    # Middle points
+
+                bc_dof.append  ([   0,    3])
+                bc_value.append([points[i][0], points[i][1]])
 
     return bc_dof,bc_value

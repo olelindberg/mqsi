@@ -28,9 +28,9 @@ print(4*np.pi/2)
 itermax_outer  = 1
 itertol_outer  = 1e-4
 itermax_inner  = 1000
-itertol_inner  = 1e-6
+itertol_inner  = 1e-5
 solver_type = "gradient_descent" # "trust-constr" # "SLSQP" # "L-BFGS-B" # "dogleg" # "trust-ncg"
-curve       = "wicket5"
+curve       = "pointset"
 show_figures = True
 
 center          = [0,0]
@@ -41,7 +41,23 @@ center          = [5,6]
 radius          = 10
 angles          = [0.2*np.pi,0.6*np.pi,1.9*np.pi]
 
-bc_dof,bc_value = mqsi_constraints(curve,center,radius,angles)
+points = [[1.0, 0.0],[0.0, 1.0],[-1.0,0.0 ],[0.0,-1.0]]
+
+points = [[0.0, 0.0],[2.0, 0.0]]
+points = [[0.0, 0.0],[0.0, 2.0]]
+
+points = [[0.0, 0.0],[1.0, 0.0],[2.0,1.0 ],[3,1.2],[4,2],[6,3.3]]
+
+n = 1000
+points = np.zeros((n,2))
+points[:,0] = np.arange(0,n,1)
+np.random.seed(42)
+points[:,1] = np.random.rand(n)
+
+
+
+
+bc_dof,bc_value = mqsi_constraints(curve,center,radius,angles,points)
 
 #-----------------------------------------------------------------------------#
 # Equality constraints
@@ -59,7 +75,7 @@ for i in range(len(bc_dof)):
 print(f"Setting initial condition for {curve} ...")
 x0 = np.zeros(Constants.NODE_DOFS * len(bc_dof))
 x0 = assign_constraints(x0, bc_dof, bc_value)
-x0 = mqsi_initial_conditions(curve,x0,center,radius,angles)
+x0 = mqsi_initial_conditions(curve,x0,center,radius,angles,points)
 
 #-----------------------------------------------------------------------------#
 # Solve:
@@ -136,6 +152,7 @@ elif solver_type == "gradient_descent":
         iter_inner = 0
         while (itermax_inner>0):
 
+
             grad_arc_old = grad_arc
             grad_arc     = mvc_integrand_jacobian_arc_length(x,ds)
 
@@ -146,8 +163,8 @@ elif solver_type == "gradient_descent":
                 gamma_arc = np.abs(dds.dot(dgrad_arc))/dgrad_arc.dot(dgrad_arc)
 
             ds_old = ds
-            dds    = gamma_arc*grad_arc
-            ds     = ds - dds
+            ds     = ds - gamma_arc*grad_arc
+            dds    = ds - ds_old
 
             #----------------------------------------------------#
             # Compute the gradient:
@@ -166,10 +183,6 @@ elif solver_type == "gradient_descent":
             if dgrad.dot(dgrad)>0 and iter_inner>0:
                 gamma = np.abs(dx.dot(dgrad))/dgrad.dot(dgrad)
 
-
-
-
-
             #----------------------------------------------------#
             # Update the solution:
             #----------------------------------------------------#
@@ -180,8 +193,8 @@ elif solver_type == "gradient_descent":
             x   = x - dxx
 
 
-
-            ds_rel = np.sum(np.abs(dds)/ds)
+            
+            ds_rel = np.sum(np.abs(dds))/np.sum(ds)
             print(f"arc length iteration done, iter = {iter_inner:<4}, ls = {np.sum(ds):<10.10}, ds_rel = {ds_rel:<10.10}")
 
             if 0 < iter_inner and iter_inner < itermax_inner and ds_rel < itertol_inner:
