@@ -20,18 +20,11 @@ from mvc_integrand_jacobian_arc_length import mvc_integrand_jacobian_arc_length
 # 3 - y
 # 4 - y'
 # 5 - y''
-print(1*np.pi/2)
-print(2*np.pi/2)
-print(3*np.pi/2)
-print(4*np.pi/2)
-#asdf
-itermax_outer  = 1
-itertol_outer  = 1e-4
+
 itermax_inner  = 1000
-itertol_inner  = 1e-5
-solver_type = "gradient_descent" # "trust-constr" # "SLSQP" # "L-BFGS-B" # "dogleg" # "trust-ncg"
-curve       = "pointset"
-show_figures = True
+itertol_inner  = 1e-6
+curve          = "pointset"
+show_figures   = True
 
 center          = [0,0]
 radius          = 1
@@ -48,7 +41,7 @@ points = [[0.0, 0.0],[0.0, 2.0]]
 
 points = [[0.0, 0.0],[1.0, 0.0],[2.0,1.0 ],[3,1.2],[4,2],[6,3.3]]
 
-n = 1000
+n = 100
 points = np.zeros((n,2))
 points[:,0] = np.arange(0,n,1)
 np.random.seed(42)
@@ -77,149 +70,92 @@ x0 = np.zeros(Constants.NODE_DOFS * len(bc_dof))
 x0 = assign_constraints(x0, bc_dof, bc_value)
 x0 = mqsi_initial_conditions(curve,x0,center,radius,angles,points)
 
+
+#----------------------------------------------------#
+# Initialization of variables:
+#----------------------------------------------------#
+x     = x0
+x_old = 0*x0
+grad  = np.zeros(len(x))
+
+#----------------------------------------------------#
+# Initialization of norms:
+#----------------------------------------------------#
+#f  = mvc_objective_function(x)
+
+num_points = int(len(x)/6)
+ds = np.zeros(num_points-1)
+
+for i in range(0,len(x)-6,6): # Loop over the curves, not the vertices
+
+    x = np.reshape(x,(num_points,6))
+    ii = int(i/6)
+
+    
+    cx,cy = mvc_vertex_to_curve(x,ii)
+    x = x.flatten()
+
+    dx = cx[3] - cx[0]
+    dy = cy[3] - cy[0]
+    ds[ii] = np.sqrt(dx**2 + dy**2)
+
+ds_old     = 0*ds
+grad_arc   = 0*ds
+
 #-----------------------------------------------------------------------------#
 # Solve:
 #-----------------------------------------------------------------------------#
-if solver_type == "trust-constr":
+iter_inner = 0
+while (itermax_inner>0):
 
-    print("Solving with trust-constr ...")
-    
-    options = {"maxiter" : maxiter,'disp': True, "verbose" : 1}
-    method =  'trust-constr' # 'SLSQP' #
-    
-    res     = minimize(mvc_objective_function, x0, jac=mvc_integrand_jacobian,constraints=equality_constraints , itertol_inner=itertol_inner, method=method,options=options)
 
-    x = res.x
+    grad_arc_old = grad_arc
+    grad_arc     = mvc_integrand_jacobian_arc_length(x,ds)
 
-elif solver_type == "gradient_descent":
+    dds = ds - ds_old
+    dgrad_arc = grad_arc - grad_arc_old
+    gamma_arc = 1e-10
+    if dgrad_arc.dot(dgrad_arc)>0 and iter_inner>0:
+        gamma_arc = np.abs(dds.dot(dgrad_arc))/dgrad_arc.dot(dgrad_arc)
 
-    print("Solving with gradient descent ...")
-
-    #----------------------------------------------------#
-    # Initialization of variables:
-    #----------------------------------------------------#
-    x     = x0
-    x_old = 0*x0
-    grad  = np.zeros(len(x))
-
+    ds_old = ds
+    ds     = ds - gamma_arc*grad_arc
+    dds    = ds - ds_old
 
     #----------------------------------------------------#
-    # Initialization of norms:
+    # Compute the gradient:
     #----------------------------------------------------#
-    #f  = mvc_objective_function(x)
-    x_norm_init = np.linalg.norm(x)
-    x_norm_old  = x_norm_init
+    grad_old = grad
+    grad     = mvc_integrand_jacobian(x,ds)
+    grad     = assign_constraints_grad(grad, bc_dof)
 
-    num_points = int(len(x)/6)
 
-    ds = np.zeros(num_points-1)
+    #----------------------------------------------------#
+    # Compute iteration step size:
+    #----------------------------------------------------#
+    dx    = x - x_old
+    dgrad = grad - grad_old
+    gamma = 1e-10
+    if dgrad.dot(dgrad)>0 and iter_inner>0:
+        gamma = np.abs(dx.dot(dgrad))/dgrad.dot(dgrad)
 
-    for i in range(0,len(x)-6,6): # Loop over the curves, not the vertices
-
-        x = np.reshape(x,(num_points,6))
-        ii = int(i/6)
+    #----------------------------------------------------#
+    # Update the solution:
+    #----------------------------------------------------#
+    xx = np.zeros((len(x),3))
+    xx[:,0] = x
+    x_old = x
+    dxx = gamma*grad
+    x   = x - dxx
     
-        
-        cx,cy = mvc_vertex_to_curve(x,ii)
-        x = x.flatten()
-
-        dx = cx[3] - cx[0]
-        dy = cy[3] - cy[0]
-        ds[ii] = np.sqrt(dx**2 + dy**2)
-
-    ls = np.sum(ds)
-
-    ds_old     = 0*ds
-    grad_arc   = 0*ds
-    
-    for j in range(itermax_outer):
-
-        #ds     = arc_length(x,ds,itermax=100)
-        #ls_old = ls
-        #ls     = np.sum(ds)
-        #
-        #dls_rel = np.abs(ls-ls_old)/ls
-#
-        #if (dls_rel<itertol_outer):
-        #    print(f"outer      iteration done: iter = {j:<8d} arc length: ls = {ls:<10.8}, dls_rel = {dls_rel:<10.8}")
-        #    break
-
-        #----------------------------------------------------#
-        # Main loop:
-        #----------------------------------------------------#
-        f_evals  = []
-        ls_evals = []
-        iter_inner = 0
-        while (itermax_inner>0):
+    ds_rel = np.sum(np.abs(dds))/np.sum(ds)
+    print(f"arc length iteration done, iter = {iter_inner:<4}, ls = {np.sum(ds):<10.10}, ds_rel = {ds_rel:<10.10}")
 
 
-            grad_arc_old = grad_arc
-            grad_arc     = mvc_integrand_jacobian_arc_length(x,ds)
+    if iter_inner>0 and (iter_inner == itermax_inner or ds_rel < itertol_inner):
+        break
 
-            dds = ds - ds_old
-            dgrad_arc = grad_arc - grad_arc_old
-            gamma_arc = 1e-10
-            if dgrad_arc.dot(dgrad_arc)>0 and iter_inner>0:
-                gamma_arc = np.abs(dds.dot(dgrad_arc))/dgrad_arc.dot(dgrad_arc)
-
-            ds_old = ds
-            ds     = ds - gamma_arc*grad_arc
-            dds    = ds - ds_old
-
-            #----------------------------------------------------#
-            # Compute the gradient:
-            #----------------------------------------------------#
-            grad_old = grad
-            grad     = mvc_integrand_jacobian(x,ds)
-            grad     = assign_constraints_grad(grad, bc_dof)
-
-
-            #----------------------------------------------------#
-            # Compute iteration step size:
-            #----------------------------------------------------#
-            dx    = x - x_old
-            dgrad = grad - grad_old
-            gamma = 1e-10
-            if dgrad.dot(dgrad)>0 and iter_inner>0:
-                gamma = np.abs(dx.dot(dgrad))/dgrad.dot(dgrad)
-
-            #----------------------------------------------------#
-            # Update the solution:
-            #----------------------------------------------------#
-            xx = np.zeros((len(x),3))
-            xx[:,0] = x
-            x_old = x
-            dxx = gamma*grad
-            x   = x - dxx
-
-
-            
-            ds_rel = np.sum(np.abs(dds))/np.sum(ds)
-            print(f"arc length iteration done, iter = {iter_inner:<4}, ls = {np.sum(ds):<10.10}, ds_rel = {ds_rel:<10.10}")
-
-            if 0 < iter_inner and iter_inner < itermax_inner and ds_rel < itertol_inner:
-                break
-
-
-
-            #----------------------------------------------------#
-            # Check convergence:
-            #----------------------------------------------------#
-            #dx_rel = np.sum(np.abs(dxx))/np.sum(np.abs(x))
-            #if (iter_inner>0):
-            #print(f"inner      iteration done, iter = {iter_inner:<4}, dx_rel = {dx_rel:<10.10}")
-            if iter_inner+1>itermax_inner:
-                break
-
-            x_norm     = np.linalg.norm(x)
-            dx_norm    = np.abs(x_norm - x_norm_old)/x_norm_init
-            x_norm_old = x_norm
-            iter_inner = iter_inner + 1
-    #        print(f"Iteration {i:<3}  gamma: {gamma:<10.4e}  dx_norm: {dx_norm:<10.4e}")
-    #        if dx_norm < itertol_inner:
-    #            print(f"Converged in {i} iterations.")
-    #            break
-
+    iter_inner = iter_inner + 1
 
 
 if show_figures:
