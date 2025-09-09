@@ -4,12 +4,8 @@ from hermite_quintic import hermite_quintic
 from curve_metrics   import arc_length
 
 
-def mvc_objective_function(x):
+def mvc_objective_function(x, ds):
     
-    ds = arc_length(x, debug=False)
-
-
-
     gauss_xi, gauss_w = np.polynomial.legendre.leggauss(20)
     t   = (gauss_xi+1)/2
     w   = 0.5*gauss_w

@@ -81,7 +81,6 @@ grad  = np.zeros(len(x))
 #----------------------------------------------------#
 # Initialization of norms:
 #----------------------------------------------------#
-#f  = mvc_objective_function(x)
 
 num_points = int(len(x)/6)
 ds = np.zeros(num_points-1)
@@ -101,6 +100,13 @@ for i in range(0,len(x)-6,6): # Loop over the curves, not the vertices
 
 ds_old     = 0*ds
 grad_arc   = 0*ds
+
+
+f_old = mvc_objective_function(x,ds)
+
+
+f_evals = [f_old]
+ds_evals = [np.sum(ds)]
 
 #-----------------------------------------------------------------------------#
 # Solve:
@@ -148,13 +154,25 @@ while (itermax_inner>0):
     dxx = gamma*grad
     x   = x - dxx
     
+
+    f          = mvc_objective_function(x,ds)
+    f_diff_rel = np.abs(f - f_old)/np.abs(f_old)
+
     ds_rel = np.sum(np.abs(dds))/np.sum(ds)
-    print(f"arc length iteration done, iter = {iter_inner:<4}, ls = {np.sum(ds):<10.10}, ds_rel = {ds_rel:<10.10}")
 
 
-    if iter_inner>0 and (iter_inner == itermax_inner or ds_rel < itertol_inner):
+    f_evals.append(f)
+    ds_evals.append(np.sum(ds))
+
+
+    print(f"arc length iteration done, iter = {iter_inner:<4}, ls = {np.sum(ds):<10.10}, ds_rel = {ds_rel:<10.10}, f_rel = {f_diff_rel:<10.10}")
+
+
+    if iter_inner>0 and (iter_inner == itermax_inner or f_diff_rel < itertol_inner):
         break
 
+
+    f_old = f
     iter_inner = iter_inner + 1
 
 
@@ -243,10 +261,10 @@ if show_figures:
         ax[1,1].set_ylabel('y')
         ax[1,1].grid(True)
 
-    #plt.figure()
-    #plt.plot(f_evals[1:])
+    plt.figure()
+    plt.loglog(f_evals[1:])
 #
-    #plt.figure()
-    #plt.plot(ds_evals[1:])
+    plt.figure()
+    plt.loglog(ds_evals[1:])
 
     plt.show()
