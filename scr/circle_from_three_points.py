@@ -8,6 +8,14 @@ def arc_parameter(center,point):
     return theta
 
 def circle_from_three_points(p1, p2, p3):
+
+    scale = np.max([np.max(p1),np.max(p2),np.max(p3)])
+
+    p1 = 1/scale*p1
+    p2 = 1/scale*p2
+    p3 = 1/scale*p3
+
+
     A = np.array([
         [p1[0], p1[1], 1],
         [p2[0], p2[1], 1],
@@ -22,9 +30,13 @@ def circle_from_three_points(p1, p2, p3):
 
     # Determinants
     a = np.linalg.det(A)
+    center = np.zeros(2)
+    radius = 0
+
+    #print(a)
 
     if abs(a) < 1e-10:
-        raise ValueError("Points are colinear")
+        return p2,np.finfo(p2.dtype).max,0
 
     Dx = np.linalg.det(np.hstack([B, A[:, [1, 2]]]))
     Dy = np.linalg.det(np.hstack([A[:, [0]], B, A[:, [2]]]))
@@ -34,10 +46,8 @@ def circle_from_three_points(p1, p2, p3):
     cy = 0.5 * Dy / a
     r  = np.sqrt(cx**2 + cy**2 + C / a)
 
-
-
-    center = np.array([cx, cy])
-    radius = r
+    center = scale*np.array([cx, cy])
+    radius = scale*r
 
     # Calculate the angle of the center point relative to the first point
     arc_angles = np.array([arc_parameter(center, p1),arc_parameter(center, p2),arc_parameter(center, p3)])
